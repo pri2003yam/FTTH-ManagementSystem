@@ -183,7 +183,7 @@ export default function PlanAdmin() {
             type="number"
             value={form.monthlyPrice}
             onChange={(e) =>
-              setForm({ ...form, monthlyPrice: e.target.value })
+              setForm({ ...form, monthlyPrice: Number(e.target.value) })
             }
           />
 
