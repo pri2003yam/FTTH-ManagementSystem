@@ -21,6 +21,14 @@ export default function CreateUserForm({ onClose, onSuccess }: Props) {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError("");
+    if (!newUser.username.trim()) {
+      setCreateError("Username is required.");
+      return;
+    }
+    if (!newUser.password.trim()) {
+      setCreateError("Password is required.");
+      return;
+    }
     setCreateLoading(true);
     try {
       await api.post(ENDPOINTS.USERS, newUser);
@@ -41,7 +49,6 @@ export default function CreateUserForm({ onClose, onSuccess }: Props) {
             <input
               value={newUser.username}
               onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-              required
               placeholder="Enter username"
               style={inputStyle}
               onFocus={focusBorder}
@@ -53,7 +60,6 @@ export default function CreateUserForm({ onClose, onSuccess }: Props) {
               type="password"
               value={newUser.password}
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              required
               placeholder="Enter password"
               style={inputStyle}
               onFocus={focusBorder}

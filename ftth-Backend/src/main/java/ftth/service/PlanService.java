@@ -113,6 +113,10 @@ public void updatePlan(long planId, Plan updatedPlan,User currUser) {
     );
 }
 
+public boolean togglePlanStatus(long id, boolean newStatus) {
+        return repo.togglePlanStatus(id, newStatus);
+    }
+
 public boolean togglePlan(long id,User currUser) {
         Plan plan = repo.findPlanById(id);
         if (plan == null) return false;
