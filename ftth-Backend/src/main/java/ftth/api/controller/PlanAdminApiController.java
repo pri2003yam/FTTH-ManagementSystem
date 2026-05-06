@@ -117,13 +117,14 @@ public class PlanAdminApiController {
         if (plan == null)
             return bad("Plan not found with id=" + id);
 
+        boolean newStatus = !plan.isActive();
         try {
-            planService.togglePlan(id, dummyUser());
+            planService.togglePlanStatus(id, newStatus);
         } catch (RuntimeException e) {
             return bad(e.getMessage());
         }
 
-        String newState = plan.isActive() ? "Disabled" : "Enabled";
+        String newState = newStatus ? "Enabled" : "Disabled";
         return ok("Plan '" + plan.getPlanName() + "' is now " + newState);
     }
 
