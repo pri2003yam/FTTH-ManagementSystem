@@ -79,13 +79,34 @@ public class InventoryApiController {
     public ResponseEntity<Map<String, String>> addOlt(@RequestBody Map<String, Object> body) {
         String pincode = (String) body.get("pincode");
         String type = (String) body.get("oltType");
-        int splitterCount = (int) body.get("splitterCount");
+        Object splitterCountObj = body.get("splitterCount");
 
-        String oltCode = service.addOLT(pincode, type, splitterCount);
         Map<String, String> result = new HashMap<>();
-        result.put("oltCode", oltCode);
-        result.put("message", "OLT added successfully");
-        return ResponseEntity.ok(result);
+
+        if (pincode == null || pincode.trim().isEmpty()) {
+            result.put("message", "Pincode is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+        if (type == null || type.trim().isEmpty()) {
+            result.put("message", "OLT type is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+        if (splitterCountObj == null) {
+            result.put("message", "Splitter count is required");
+            return ResponseEntity.badRequest().body(result);
+        }
+
+        int splitterCount = ((Number) splitterCountObj).intValue();
+
+        try {
+            String oltCode = service.addOLT(pincode, type, splitterCount);
+            result.put("oltCode", oltCode);
+            result.put("message", "OLT added successfully");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("message", e.getMessage() != null ? e.getMessage() : "Failed to add OLT");
+            return ResponseEntity.badRequest().body(result);
+        }
     }
 
     @DeleteMapping("/olts/{oltCode}")

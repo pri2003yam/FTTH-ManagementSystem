@@ -34,7 +34,6 @@ export const ENDPOINTS = {
   CUSTOMER_BILLS: (code: string) => `/api/customers/${code}/bills`,
   CUSTOMER_GENERATE_BILL: (code: string) => `/api/customers/${code}/bills/generate`,
   BILL_PAY: (id: number) => `/api/customers/bills/${id}/pay`,
-  BILL_OVERDUE: (id: number) => `/api/customers/bills/${id}/overdue`,
 
   // Bills
   BILLS: "/api/bills",
@@ -52,4 +51,13 @@ export const ENDPOINTS = {
   // Users
   USERS: "/api/users",
   USER_BY_USERNAME: (username: string) => `/api/users/${username}`,
+
+  // Maintenance
+  MAINTENANCE_INVENTORY: "/api/maintenance/inventory",
+  MAINTENANCE_PORT_START: (portId: number) => `/api/maintenance/port/${portId}/start`,
+  MAINTENANCE_PORT_END: (portId: number) => `/api/maintenance/port/${portId}/end`,
+  MAINTENANCE_SPLITTER_START: (splitterId: number) => `/api/maintenance/splitter/${splitterId}/start`,
+  MAINTENANCE_SPLITTER_END: (splitterId: number) => `/api/maintenance/splitter/${splitterId}/end`,
+  MAINTENANCE_OLT_START: (oltId: number) => `/api/maintenance/olt/${oltId}/start`,
+  MAINTENANCE_OLT_END: (oltId: number) => `/api/maintenance/olt/${oltId}/end`,
 };
