@@ -20,3 +20,10 @@ ftth-Backend/target/
 # ── Compiled/generated files ────────────────────────────
 *.class
 *.lst
+
+# ── Maintenance module (not for repo) ───────────────────
+ftth-Backend/src/main/java/ftth/repository/MaintenanceRepository.java
+ftth-Backend/src/main/java/ftth/service/MaintenanceService.java
+ftth-Backend/src/main/java/ftth/api/controller/MaintenanceApiController.java
+ftth-frontend/src/pages/Maintenance/Maintenance.tsx
+ftth-frontend/src/services/maintenanceService.ts
