@@ -1,15 +1,12 @@
 package ftth.service;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import ftth.model.Bill;
 import ftth.model.Customer;
 import ftth.model.CustomerConnection;
 import ftth.model.Plan;
 import ftth.model.ServiceArea;
 import ftth.model.dtos.AddConnectionRequest;
 import ftth.repository.*;
-import ftth.util.BillUtil;
 
 
 public class CustomerConnectionService {
@@ -107,21 +104,10 @@ public void createConnection(AddConnectionRequest req,Long currentUserId) {
     connectionRepo.insert(connection);
     // 🔥 INSERT INTO customer_connections
     // =================================
-    // 7️⃣ Create billing entry (bills)
+    // 7️⃣ Create billing entry (pro-rata first bill)
     // =================================
-   BigDecimal planCharge = selectedPlan.getMonthlyPrice();
-   BigDecimal gstAmount = planCharge.multiply(new BigDecimal("0.18"));
-
-Bill bill = new Bill(
-    BillUtil.generateBillNo(),
-    customer.getCustomerId(),
-    connection.getConnectionId(),
-    LocalDate.now(),
-    LocalDate.now().plusMonths(1),
-    planCharge,
-    gstAmount
-);
-billRepository.insert(bill);
+    BillService billService = new BillService(billRepository);
+    billService.generateFirstBill(customer.getCustomerId(), connection.getConnectionId(), selectedPlan);
     // =================================
     // 8️⃣ Send confirmation email 
     
