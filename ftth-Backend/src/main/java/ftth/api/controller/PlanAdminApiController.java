@@ -139,7 +139,7 @@ public class PlanAdminApiController {
         try {
             boolean deleted = planService.deletePlan(id, dummyUser());
             if (!deleted)
-                return bad("Cannot delete '" + plan.getPlanName() + "' — it has active customers.");
+                return bad("Cannot delete '" + plan.getPlanName() + "' — it has existing connections (active or historical).");
         } catch (RuntimeException e) {
             return bad(e.getMessage());
         }

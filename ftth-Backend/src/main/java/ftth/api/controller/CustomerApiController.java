@@ -228,19 +228,5 @@ public class CustomerApiController {
         }
     }
 
-    // ── Mark Bill as Overdue ─────────────────────────────────────
-    @PostMapping("/bills/{billId}/overdue")
-    public ResponseEntity<Map<String, String>> markOverdue(
-            @PathVariable(value = "billId") Long billId) {
 
-        Map<String, String> result = new HashMap<>();
-        try {
-            billService.markOverdueIfRequired(billId);
-            result.put("message", "Bill marked as OVERDUE.");
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            result.put("message", e.getMessage() != null ? e.getMessage() : "Failed to mark overdue.");
-            return ResponseEntity.badRequest().body(result);
-        }
-    }
 }

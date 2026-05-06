@@ -58,23 +58,11 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
     }
   };
 
-  const handleOverdue = async (billId: number) => {
-    setMsg("");
-    setError("");
-    try {
-      await api.post(ENDPOINTS.BILL_OVERDUE(billId), {});
-      setMsg(`Bill #${billId} marked as OVERDUE.`);
-      loadBills();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed.");
-    }
-  };
 
   const statusBadge = (status: string) => {
     const colors: Record<string, { bg: string; text: string }> = {
       GENERATED: { bg: "#dbeafe", text: "#1e40af" },
       PAID: { bg: "#dcfce7", text: "#166534" },
-      OVERDUE: { bg: "#fee2e2", text: "#991b1b" },
     };
     const s = colors[status] || colors.GENERATED;
     return (
@@ -103,7 +91,7 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
-                {["Bill No", "Date", "Due Date", "Plan Charge", "GST", "Total", "Status", "Actions"].map((h) => (
+                {["Bill No", "Bill Date", "Due Date", "Plan Charge", "GST", "Total", "Status", "Actions"].map((h) => (
                   <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
@@ -120,10 +108,7 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
                   <td style={tdStyle}>{statusBadge(b.billStatus)}</td>
                   <td style={tdStyle}>
                     {b.billStatus === "GENERATED" && (
-                      <div style={{ display: "flex", gap: "4px" }}>
-                        <button onClick={() => handlePay(b.billId)} style={{ ...cancelBtn, fontSize: "11px", padding: "3px 8px" }}>Pay</button>
-                        <button onClick={() => handleOverdue(b.billId)} style={{ ...cancelBtn, fontSize: "11px", padding: "3px 8px", color: "#dc2626" }}>Overdue</button>
-                      </div>
+                      <button onClick={() => handlePay(b.billId)} style={{ ...cancelBtn, fontSize: "11px", padding: "3px 8px" }}>Pay</button>
                     )}
                   </td>
                 </tr>
