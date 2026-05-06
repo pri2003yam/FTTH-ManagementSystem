@@ -6,6 +6,8 @@ import ftth.repository.RoleRepository;
 import ftth.repository.UserRepository;
 import ftth.service.UserManagerService;
 
+import ftth.util.PasswordUtil;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,9 +31,9 @@ public class AuthApiController {
         String username = body.get("username");
         String password = body.get("password");
 
-        User user = userManagerService.login(username, password);
-
-        if (user == null) {
+        // Fetch user directly and use smart BCrypt/plain text match
+        ftth.model.User user = new ftth.repository.UserRepository().findByUsername(username);
+        if (user == null || !user.isActive() || !PasswordUtil.matches(password, user.getPasswordHash())) {
             Map<String, String> err = new HashMap<>();
             err.put("message", "Invalid credentials");
             return ResponseEntity.status(401).body(err);

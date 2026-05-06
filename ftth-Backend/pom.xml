@@ -67,6 +67,13 @@
             <version>3.0.0</version>
         </dependency>
 
+        <!-- ✅ BCrypt password hashing -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+        </dependency>
+
         <!-- ✅ Test support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
