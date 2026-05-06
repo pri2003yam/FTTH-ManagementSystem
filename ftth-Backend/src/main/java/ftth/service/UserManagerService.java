@@ -32,10 +32,7 @@ public UserManagerService(UserRepository userRepository,RoleRepository roleRepos
             return null;
         }
     
-        // if (!PasswordUtil.matches(password, user.getPasswordHash())) {
-        //     return null;
-        // }
-       if (!password.equals(user.getPasswordHash())) {
+       if (!PasswordUtil.matches(password, user.getPasswordHash())) {
             return null;
         }
 
@@ -111,7 +108,7 @@ public boolean addUser(String username, String password, String role) {
     }
 
     // 🔹 Insert user
-    boolean saved = userRepository.insertUser(username, password, roleId);
+    boolean saved = userRepository.insertUser(username, PasswordUtil.hash(password), roleId);
 
     if (saved) {
         System.out.println("User '" + username + "' added with role " + role + ".");
@@ -129,7 +126,7 @@ public boolean addUser(String username, String password, String role) {
     username = username.trim();
     newPassword = newPassword.trim();
 
-    boolean updated = userRepository.updatePassword(username, newPassword);
+    boolean updated = userRepository.updatePassword(username, PasswordUtil.hash(newPassword));
 
     if (updated) {
         System.out.println("Password updated successfully.");

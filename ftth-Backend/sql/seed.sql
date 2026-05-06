@@ -16,10 +16,10 @@ INSERT INTO roles (role_code) VALUES ('ADMIN'), ('CSR'), ('MAINT');
 -- ============================================================
 
 INSERT INTO users (username, password_hash, role_id, is_active) VALUES
-('admin',    'admin123', 1, TRUE),
-('csr1',     'csr123',   2, TRUE),
-('maint1',   'maint123', 3, TRUE),
-('testuser', 'test123',  2, TRUE);
+('admin',    'admin123',  1, TRUE),
+('csr1',     'csr123',    2, TRUE),
+('maint1',   'maint123',  3, TRUE),
+('testuser', 'test123',   2, TRUE);
 
 -- ============================================================
 -- 3. service_areas  (6 cities, 5-6 pincodes each)
@@ -336,3 +336,13 @@ JOIN olts o ON o.service_area_id = sa.service_area_id AND o.olt_type = 'OLT300'
 JOIN splitters s ON s.olt_id = o.olt_id AND s.splitter_number = 1
 JOIN ports p ON p.splitter_id = s.splitter_id AND p.port_number = 1
 WHERE c.customer_code = 'AAHA-0015' AND pl.plan_code = 'BASIC' AND sa.pincode = '400004';
+
+-- ============================================================
+-- 11. Hash all passwords (run-safe: skips already hashed)
+-- ============================================================
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE users
+SET password_hash = SHA2(password_hash, 256)
+WHERE LENGTH(password_hash) != 64;
+SET SQL_SAFE_UPDATES = 1;
