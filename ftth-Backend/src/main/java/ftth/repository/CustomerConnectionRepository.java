@@ -285,7 +285,7 @@ private CustomerConnection mapRow(ResultSet rs) throws SQLException {
             rs.getLong("created_by"),
             rs.getLong("updated_by"),
             rs.getTimestamp("created_at").toLocalDateTime(),
-            rs.getTimestamp("updated_at").toLocalDateTime()
+            rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null
         );
     }
 public String[] findConnection(long connectionId) {

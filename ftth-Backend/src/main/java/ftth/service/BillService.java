@@ -135,6 +135,27 @@ public class BillService {
     }
 
     // ===============================
+    // UPDATE — MARK OVERDUE
+    // ===============================
+    public void markOverdueIfRequired(long billId) {
+        Bill bill = billRepository.findById(billId);
+
+        if (bill == null) {
+            throw new RuntimeException("Bill not found");
+        }
+
+        if (bill.getBillStatus() == BillStatus.PAID) {
+            throw new RuntimeException("Bill is already paid");
+        }
+
+        if (bill.getBillStatus() == BillStatus.OVERDUE) {
+            throw new RuntimeException("Bill is already overdue");
+        }
+
+        billRepository.markAsOverdue(billId);
+    }
+
+    // ===============================
     // PRINT BILL (console)
     // ===============================
     public void printBill(Bill bill, Customer customer) {

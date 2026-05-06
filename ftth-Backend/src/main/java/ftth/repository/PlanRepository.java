@@ -167,16 +167,24 @@ public boolean updatePlan(long planId, Plan updatedPlan) {
 }
 
 public boolean deletePlan(long id) {
-        String checkSql = "SELECT COUNT(*) FROM customer_connections WHERE plan_id = ? AND connection_status = 'ACTIVE'";
-        String deleteSql = "DELETE FROM plans WHERE plan_id = ?";
+        String checkActiveSql = "SELECT COUNT(*) FROM customer_connections WHERE plan_id = ? AND connection_status = 'ACTIVE'";
+        String checkAllSql    = "SELECT COUNT(*) FROM customer_connections WHERE plan_id = ?";
+        String deleteSql      = "DELETE FROM plans WHERE plan_id = ?";
 
         try (Connection con = DbConnection.getConnection()) {
-            PreparedStatement checkPs = con.prepareStatement(checkSql);
+            PreparedStatement checkPs = con.prepareStatement(checkActiveSql);
             checkPs.setLong(1, id);
             ResultSet rs = checkPs.executeQuery();
             rs.next();
             if (rs.getInt(1) > 0) {
-                System.out.println("Cannot delete this plan. Active customers are using it.");
+                return false;
+            }
+
+            PreparedStatement checkAllPs = con.prepareStatement(checkAllSql);
+            checkAllPs.setLong(1, id);
+            ResultSet rsAll = checkAllPs.executeQuery();
+            rsAll.next();
+            if (rsAll.getInt(1) > 0) {
                 return false;
             }
 
