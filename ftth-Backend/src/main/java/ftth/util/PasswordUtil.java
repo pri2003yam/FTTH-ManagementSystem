@@ -11,14 +11,18 @@ public final class PasswordUtil {
         return BCrypt.hashpw(plainPassword, BCrypt.gensalt());
     }
 
-    // Smart match — works for both BCrypt hashed and plain text passwords
-    // If DB has BCrypt hash (starts with $2a$) → use BCrypt check
-    // If DB has plain text → use plain text comparison (CLI compatibility)
+    // Smart match — handles BCrypt and plain text
     public static boolean matches(String plainPassword, String storedPassword) {
         if (storedPassword == null || plainPassword == null) return false;
-        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$")) {
-            return BCrypt.checkpw(plainPassword, storedPassword);
+        try {
+            // BCrypt hash
+            if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$")) {
+                return BCrypt.checkpw(plainPassword, storedPassword);
+            }
+        } catch (Exception e) {
+            return false;
         }
+        // Plain text (CLI compatibility)
         return plainPassword.equals(storedPassword);
     }
 }

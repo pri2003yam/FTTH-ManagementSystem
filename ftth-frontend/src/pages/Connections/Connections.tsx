@@ -56,14 +56,15 @@ export default function Connections() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [niPlanSearch, setNiPlanSearch] = useState("");
   const [niPincodeInput, setNiPincodeInput] = useState("");
   const [niForm, setNiForm] = useState({ customerName: "", email: "", salary: "", pincode: "" });
   const [niLoading, setNiLoading] = useState(false);
   const [niDataLoading, setNiDataLoading] = useState(false);
   const [niDataError, setNiDataError] = useState("");
   const [niError, setNiError] = useState("");
-  const [niSuccess, setNiSuccess] = useState("");
+  const [niOltTypes, setNiOltTypes] = useState<string[]>([]);
+  const [niOltLoading, setNiOltLoading] = useState(false);
+  const [niCreatedConn, setNiCreatedConn] = useState<any>(null);
 
   // ── Change Plan state ──
   const [activeConns, setActiveConns] = useState<ActiveConnection[]>([]);
@@ -77,6 +78,7 @@ export default function Connections() {
   const [cpLoading, setCpLoading] = useState(false);
   const [cpError, setCpError] = useState("");
   const [cpSuccess, setCpSuccess] = useState("");
+  const [cpSuccessData, setCpSuccessData] = useState<any>(null);
 
   // ── Move state ──
   const [moveConn, setMoveConn] = useState<ActiveConnection | null>(null);
@@ -87,6 +89,7 @@ export default function Connections() {
   const [moveLoading, setMoveLoading] = useState(false);
   const [moveError, setMoveError] = useState("");
   const [moveSuccess, setMoveSuccess] = useState("");
+  const [moveSuccessData, setMoveSuccessData] = useState<any>(null);
   // ── Disconnect state ──
   const [dcConns, setDcConns] = useState<ActiveConnection[]>([]);
   const [dcConnsLoading, setDcConnsLoading] = useState(false);
@@ -172,21 +175,38 @@ export default function Connections() {
   const resetNi = () => {
     setNiForm({ customerName: "", email: "", salary: "", pincode: "" });
     setSelectedPlanId(null);
-    setNiPlanSearch("");
     setNiPincodeInput("");
     setNiError("");
-    setNiSuccess("");
+    setNiOltTypes([]);
+    setNiCreatedConn(null);
+  };
+
+  // When pincode is selected, fetch OLT types available
+  const handlePincodeSelect = async (pin: string) => {
+    setNiForm({ ...niForm, pincode: pin });
+    setNiPincodeInput(pin);
+    setSelectedPlanId(null);
+    setNiOltTypes([]);
+    if (!pin) return;
+    setNiOltLoading(true);
+    try {
+      const olts = await api.get<{ oltType: string; availablePorts: number }[]>(
+        `${ENDPOINTS.INVENTORY_OLTS}?pincode=${pin}`
+      );
+      const types = [...new Set(olts.filter(o => o.availablePorts > 0).map(o => o.oltType))];
+      setNiOltTypes(types);
+    } catch { setNiOltTypes([]); }
+    finally { setNiOltLoading(false); }
   };
 
   const handleNewInstall = async (e: React.FormEvent) => {
     e.preventDefault();
     setNiError("");
-    setNiSuccess("");
     const plan = plans.find((p) => p.planId === selectedPlanId);
     if (!plan) { setNiError("Please select a plan from the table."); return; }
     setNiLoading(true);
     try {
-      await api.post(ENDPOINTS.CONNECTION_NEW_INSTALL, {
+      const res = await api.post<any>(ENDPOINTS.CONNECTION_NEW_INSTALL, {
         customerName: niForm.customerName,
         email: niForm.email,
         salary: Number(niForm.salary),
@@ -194,8 +214,9 @@ export default function Connections() {
         planId: plan.planId,
         oltType: plan.oltType,
       });
-      setNiSuccess("Connection created successfully.");
+      setNiCreatedConn(res);
       resetNi();
+      setNiCreatedConn(res);
     } catch (err: unknown) {
       setNiError(err instanceof Error ? err.message : "Failed to create connection.");
     } finally {
@@ -210,8 +231,16 @@ export default function Connections() {
     setCpLoading(true);
     try {
       await api.post(ENDPOINTS.CONNECTION_CHANGE_PLAN(selectedConn.connectionId), { planId: selectedNewPlanId });
-      setCpSuccess("Plan changed successfully.");
-      // refresh connections list
+      const newPlan = availPlans.find(p => p.planId === selectedNewPlanId);
+      setCpSuccessData({
+        customerCode: selectedConn.customerCode,
+        fullName: selectedConn.fullName,
+        oldPlan: selectedConn.planName,
+        newPlan: newPlan?.planName,
+        newPrice: newPlan?.monthlyPrice,
+        oltType: newPlan?.oltType,
+        pincode: selectedConn.pincode,
+      });
       const updated = await api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_ACTIVE);
       setActiveConns(updated);
       setSelectedConn(null);
@@ -248,7 +277,14 @@ export default function Connections() {
     setMoveSuccess("");
     try {
       await api.post(ENDPOINTS.CONNECTION_MOVE(moveConn.connectionId), { newPincode: Number(movePincode.trim()) });
-      setMoveSuccess("Customer moved successfully.");
+      setMoveSuccessData({
+        customerCode: moveConn.customerCode,
+        fullName: moveConn.fullName,
+        oldPincode: moveConn.pincode,
+        newPincode: movePincode.trim(),
+        planName: moveConn.planName,
+        oltType: moveConn.oltType,
+      });
       const updated = await api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_ACTIVE);
       setActiveConns(updated);
       setMoveConn(null);
@@ -296,16 +332,19 @@ export default function Connections() {
     resetNi();
     setCpError("");
     setCpSuccess("");
+    setCpSuccessData(null);
     setSelectedConn(null);
     setMoveConn(null);
     setMovePincode("");
     setMoveCheck(null);
     setMoveError("");
     setMoveSuccess("");
+    setMoveSuccessData(null);
     setDcSelected(null);
     setDcConfirming(false);
     setDcError("");
     setDcSuccess("");
+    setNiCreatedConn(null);
   };
 
   return (
@@ -345,126 +384,142 @@ export default function Connections() {
             <button onClick={goBack} style={cancelBtn}>← Back</button>
           </div>
 
-          {/* Plan search */}
-          <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
-            <input
-              value={niPlanSearch}
-              onChange={(e) => { setNiPlanSearch(e.target.value); setSelectedPlanId(null); }}
-              placeholder="Search by plan name or OLT type..."
-              style={{ ...inputStyle, width: "280px" }}
-              onFocus={focusBorder} onBlur={blurBorder}
-            />
-            {niPlanSearch && (
-              <button onClick={() => setNiPlanSearch("")} style={cancelBtn}>Clear</button>
-            )}
-          </div>
-
-          <p style={sectionLabel}>AVAILABLE PLANS — click a row to select</p>
-          <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px" }}>
-            {niDataLoading ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>Loading plans...</p>
-            ) : niDataError ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#dc2626" }}>{niDataError}</p>
-            ) : (() => {
-              const q = niPlanSearch.toLowerCase();
-              const filtered = plans.filter((p) =>
-                q === "" || p.planName.toLowerCase().includes(q) || p.oltType.toLowerCase().includes(q)
-              );
-              return filtered.length === 0 ? (
-                <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No plans match your search.</p>
-              ) : (
-                <div style={{ maxHeight: "210px", overflowY: filtered.length > 5 ? "auto" : "visible" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                      <tr style={{ background: "#f1f5f9" }}>
-                        {["ID", "Plan Name", "Speed", "Data", "OTTs", "OLT Type", "Price / Month"].map((h) => (
-                          <th key={h} style={thStyle}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((p, i) => {
-                        const sel = selectedPlanId === p.planId;
-                        return (
-                          <tr key={p.planId} onClick={() => setSelectedPlanId(p.planId)}
-                            style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                            <td style={tdStyle}>{p.planId}</td>
-                            <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{p.planName}</td>
-                            <td style={tdStyle}>{p.speedLabel}</td>
-                            <td style={tdStyle}>{p.dataLimitLabel}</td>
-                            <td style={tdStyle}>{p.ottCount}</td>
-                            <td style={tdStyle}>{p.oltType}</td>
-                            <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {p.monthlyPrice}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
-          </div>
-
-          {plans.find((p) => p.planId === selectedPlanId) && (
-            <p style={{ fontSize: "13px", color: "#16a34a", margin: "0 0 16px 0", fontWeight: 500 }}>
-              ✓ Selected: {plans.find((p) => p.planId === selectedPlanId)!.planName} — Rs.{plans.find((p) => p.planId === selectedPlanId)!.monthlyPrice}
-            </p>
-          )}
-
-          <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", padding: "24px", maxWidth: "480px" }}>
-            <form onSubmit={handleNewInstall} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <Field label="Customer Name">
-                <input value={niForm.customerName} onChange={(e) => setNiForm({ ...niForm, customerName: e.target.value })}
-                  required placeholder="Enter full name" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-              </Field>
-              <Field label="Email">
-                <input type="email" value={niForm.email} onChange={(e) => setNiForm({ ...niForm, email: e.target.value })}
-                  required placeholder="Enter email address" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-              </Field>
-              <Field label="Salary (Rs.)">
-                <input type="number" value={niForm.salary} onChange={(e) => setNiForm({ ...niForm, salary: e.target.value })}
-                  required placeholder="Minimum Rs. 30,000" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
-              </Field>
-              <Field label="Pincode">
-                <input
-                  value={niPincodeInput}
-                  onChange={(e) => {
-                    setNiPincodeInput(e.target.value);
-                    setNiForm({ ...niForm, pincode: "" });
-                  }}
-                  placeholder="Type to search pincode..."
-                  style={inputStyle}
-                  onFocus={focusBorder} onBlur={blurBorder}
-                />
-                {niPincodeInput && (() => {
-                  const matches = pincodes.filter((pin) => pin.includes(niPincodeInput));
-                  return matches.length > 0 && niForm.pincode === "" ? (
-                    <div style={{ border: "1px solid #d1d5db", borderRadius: "3px", background: "#fff", marginTop: "2px", maxHeight: "140px", overflowY: "auto" }}>
-                      {matches.map((pin) => (
-                        <div
-                          key={pin}
-                          onClick={() => { setNiForm({ ...niForm, pincode: pin }); setNiPincodeInput(pin); }}
-                          style={{ padding: "7px 10px", fontSize: "13px", cursor: "pointer", color: "#111827" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                        >
-                          {pin}
-                        </div>
+          {niDataLoading ? (
+            <p style={{ fontSize: "13px", color: "#6b7280" }}>Loading...</p>
+          ) : niDataError ? (
+            <p style={{ fontSize: "13px", color: "#dc2626" }}>{niDataError}</p>
+          ) : (
+            <>
+              {/* TOP ─ Customer Details Form — original box size */}
+              <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", padding: "24px", maxWidth: "480px", marginBottom: "24px" }}>
+                <p style={{ ...sectionLabel, marginBottom: "16px" }}>CUSTOMER DETAILS</p>
+                <form onSubmit={handleNewInstall} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <Field label="Customer Name">
+                    <input value={niForm.customerName} onChange={(e) => setNiForm({ ...niForm, customerName: e.target.value })}
+                      required placeholder="Enter full name" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+                  </Field>
+                  <Field label="Email">
+                    <input type="email" value={niForm.email} onChange={(e) => setNiForm({ ...niForm, email: e.target.value })}
+                      required placeholder="Enter email address" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+                  </Field>
+                  <Field label="Salary (Rs.)">
+                    <input type="number" value={niForm.salary} onChange={(e) => setNiForm({ ...niForm, salary: e.target.value })}
+                      required placeholder="Minimum Rs. 30,000" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+                  </Field>
+                  <Field label="Pincode">
+                    <input
+                      value={niPincodeInput}
+                      onChange={(e) => { 
+                        const val = e.target.value;
+                        setNiPincodeInput(val); 
+                        setNiForm({ ...niForm, pincode: "" }); 
+                        setNiOltTypes([]); 
+                        setSelectedPlanId(null);
+                        if (pincodes.includes(val)) handlePincodeSelect(val);
+                      }}
+                      placeholder="Enter pincode"
+                      list="ni-pincode-list"
+                      style={inputStyle} onFocus={focusBorder} onBlur={(e) => { blurBorder(e); if (pincodes.includes(niPincodeInput)) handlePincodeSelect(niPincodeInput); }}
+                    />
+                    <datalist id="ni-pincode-list">
+                      {pincodes.map((p) => <option key={p} value={p} />)}
+                    </datalist>
+                  </Field>
+                  {niOltLoading && <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>Checking OLT types...</p>}
+                  {niOltTypes.length > 0 && (
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {niOltTypes.map(t => (
+                        <span key={t} style={{ fontSize: "12px", background: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: "3px", fontWeight: 500 }}>
+                          {t} available
+                        </span>
                       ))}
                     </div>
-                  ) : null;
-                })()}
-              </Field>
-              {niError   && <p style={errText}>{niError}</p>}
-              {niSuccess && <p style={{ fontSize: "13px", color: "#16a34a", margin: 0 }}>{niSuccess}</p>}
-              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
-                <button type="button" onClick={resetNi} style={cancelBtn}>Clear</button>
-                <button type="submit" disabled={niLoading} style={primaryBtn}>
-                  {niLoading ? "Creating..." : "Create Connection"}
-                </button>
+                  )}
+                  {niForm.pincode && niOltTypes.length === 0 && !niOltLoading && (
+                    <p style={{ fontSize: "12px", color: "#dc2626", margin: 0 }}>No ports available in this pincode.</p>
+                  )}
+                  {niOltTypes.length > 0 && !plans.find(p => p.planId === selectedPlanId) && (
+                    <p style={{ fontSize: "12px", color: "#f59e0b", margin: 0 }}>Select a plan from the table below.</p>
+                  )}
+                  {plans.find(p => p.planId === selectedPlanId) && (
+                    <p style={{ fontSize: "13px", color: "#16a34a", margin: 0, fontWeight: 500 }}>
+                      ✓ Plan: {plans.find(p => p.planId === selectedPlanId)!.planName} — Rs.{plans.find(p => p.planId === selectedPlanId)!.monthlyPrice}
+                    </p>
+                  )}
+                  {niError && <p style={errText}>{niError}</p>}
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
+                    <button type="button" onClick={resetNi} style={cancelBtn}>Clear</button>
+                    <button type="submit" disabled={niLoading || !selectedPlanId} style={{ ...primaryBtn, opacity: !selectedPlanId ? 0.5 : 1 }}>
+                      {niLoading ? "Creating..." : "Create Connection"}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+
+              {/* BOTTOM ─ Plans shown only after pincode selected */}
+              {niForm.pincode && niOltTypes.length > 0 && (
+                <>
+                  <p style={sectionLabel}>PLANS FOR PINCODE {niForm.pincode} — click a row to select</p>
+                  <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden" }}>
+                    <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                          <tr style={{ background: "#f1f5f9" }}>
+                            {["Plan Name", "Speed", "Data", "OTTs", "OLT Type", "Price / Month"].map(h => (
+                              <th key={h} style={thStyle}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {plans.filter(p => niOltTypes.includes(p.oltType)).map((p, i) => {
+                            const sel = selectedPlanId === p.planId;
+                            return (
+                              <tr key={p.planId} onClick={() => setSelectedPlanId(p.planId)}
+                                style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
+                                <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{p.planName}</td>
+                                <td style={tdStyle}>{p.speedLabel}</td>
+                                <td style={tdStyle}>{p.dataLimitLabel}</td>
+                                <td style={tdStyle}>{p.ottCount}</td>
+                                <td style={tdStyle}>{p.oltType}</td>
+                                <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {p.monthlyPrice}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ✅ Green success box — same width as form, compact */}
+              {niCreatedConn && (
+                <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Connection Created Successfully</p>
+                    <button onClick={() => setNiCreatedConn(null)} style={cancelBtn}>Done</button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {[
+                      ["Connection ID", `#${niCreatedConn.connectionId}`],
+                      ["Customer Code", niCreatedConn.customerCode],
+                      ["Customer Name", niCreatedConn.fullName],
+                      ["Pincode",       niCreatedConn.pincode],
+                      ["Plan",          `${niCreatedConn.planName} — Rs.${niCreatedConn.monthlyPrice}/mo`],
+                      ["OLT Type",      niCreatedConn.oltType],
+                      ["OLT Code",      niCreatedConn.oltCode],
+                      ["Port Assigned", `Splitter ${niCreatedConn.splitterNumber} / Port ${niCreatedConn.portNumber}`],
+                    ].map(([label, value]) => (
+                      <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                        <span style={{ color: "#6b7280" }}>{label}</span>
+                        <span style={{ color: "#166534", fontWeight: 600 }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -596,7 +651,6 @@ export default function Connections() {
               )}
 
               {cpError   && <p style={{ ...errText, marginBottom: "12px" }}>{cpError}</p>}
-              {cpSuccess && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{cpSuccess}</p>}
 
               <div style={{ display: "flex", gap: "8px" }}>
                 <button onClick={() => { setSelectedConn(null); setAvailPlans([]); setSelectedNewPlanId(null); setCpError(""); setCpSuccess(""); }} style={cancelBtn}>
@@ -612,6 +666,30 @@ export default function Connections() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── CHANGE PLAN SUCCESS BOX ── */}
+      {cpSuccessData && view === "change" && (
+        <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Plan Changed Successfully</p>
+            <button onClick={() => setCpSuccessData(null)} style={cancelBtn}>Done</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {[
+              ["Customer",  `${cpSuccessData.fullName} (${cpSuccessData.customerCode})`],
+              ["Pincode",   cpSuccessData.pincode],
+              ["Old Plan",  cpSuccessData.oldPlan],
+              ["New Plan",  `${cpSuccessData.newPlan} — Rs.${cpSuccessData.newPrice}/mo`],
+              ["OLT Type",  cpSuccessData.oltType],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                <span style={{ color: "#6b7280" }}>{label}</span>
+                <span style={{ color: "#166534", fontWeight: 600 }}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -698,7 +776,7 @@ export default function Connections() {
                     <input
                       value={movePincode}
                       onChange={(e) => { setMovePincode(e.target.value); setMoveCheck(null); }}
-                      placeholder="Type or pick..."
+                      placeholder="Enter pincode"
                       list="move-pincode-list"
                       style={inputStyle}
                       onFocus={focusBorder}
@@ -741,7 +819,6 @@ export default function Connections() {
               )}
 
               {moveError   && <p style={{ ...errText, marginBottom: "12px" }}>{moveError}</p>}
-              {moveSuccess && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{moveSuccess}</p>}
 
               <div style={{ display: "flex", gap: "8px" }}>
                 <button onClick={() => { setMoveConn(null); setMovePincode(""); setMoveCheck(null); setMoveError(""); setMoveSuccess(""); }} style={cancelBtn}>
@@ -757,6 +834,30 @@ export default function Connections() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── MOVE SUCCESS BOX ── */}
+      {moveSuccessData && view === "move" && (
+        <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Customer Moved Successfully</p>
+            <button onClick={() => setMoveSuccessData(null)} style={cancelBtn}>Done</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {[
+              ["Customer",    `${moveSuccessData.fullName} (${moveSuccessData.customerCode})`],
+              ["Old Pincode", moveSuccessData.oldPincode],
+              ["New Pincode", moveSuccessData.newPincode],
+              ["Plan",        moveSuccessData.planName],
+              ["OLT Type",    moveSuccessData.oltType],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                <span style={{ color: "#6b7280" }}>{label}</span>
+                <span style={{ color: "#166534", fontWeight: 600 }}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

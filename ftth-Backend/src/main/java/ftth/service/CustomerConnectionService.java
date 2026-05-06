@@ -32,86 +32,46 @@ public class CustomerConnectionService {
         this.connectionRepo = customerConnectionRepository;
         this.serviceAreaService=serviceAreaService;
     }
-public void createConnection(AddConnectionRequest req,Long currentUserId) {
-    // ===============================
-    // 1️⃣ Validate salary (BUSINESS RULE)
-    // ===============================
+public CustomerConnection createConnection(AddConnectionRequest req,Long currentUserId) {
     if (req.getSalary() <= 30000) {
-       System.out.println("Salary below eligibility. Minimum salary required: Rs.30,000.");
-        return;
+       throw new RuntimeException("Salary below eligibility. Minimum salary required: Rs.30,000.");
     }
-    // ===============================
-    // 2️⃣ Validate plan (READ: plans)
-    // ===============================
    Plan selectedPlan;
     long planId = req.getPlanId();
     selectedPlan = planService.findPlanById(planId);
     if (selectedPlan == null || !selectedPlan.isActive()) {
         throw new RuntimeException("Invalid plan ID: " + planId);
     }
-    // =================================
-    // 3️⃣ Validate service area (READ: service_areas)
-    // =================================
     ServiceArea serviceArea =serviceAreaService.findByPincode(req.getPincode());
-
     if (serviceArea == null) {
-         System.out.println("Service is not available in this pincode.");
-         return;
+         throw new RuntimeException("Service is not available in this pincode.");
     }
-
     if (!serviceArea.isActive()) {
-        System.out.println("Service area is currently inactive.");
-        return;
+        throw new RuntimeException("Service area is currently inactive.");
     }
-
-    // =================================
-    // 4️⃣ Allocate inventory (READ + UPDATE)
-    // TABLE: inventory / olt_ports
-    // =================================
-  
     int ports = inventoryService.getAvailablePortsByType( serviceArea.getServiceAreaId(),req.getOltType());
     if (ports <= 0) {
-        System.out.println("No " + req.getOltType() + " ports available in pincode " + serviceArea.getPincode() + ".");
-        return;
+        throw new RuntimeException("No " + req.getOltType() + " ports available in pincode " + serviceArea.getPincode() + ".");
     }
-    // 🔥 UPDATE inventory (reduce available ports by 1)
     Long portId = inventoryService.allocatePort(serviceArea.getServiceAreaId(),req.getOltType());
-
-    // =================================
-    // 5️⃣ Insert or fetch customer (customers)
-    // =================================
     Customer customer =customerService.findOrCreateCustomer(req.getCustomerName(),req.getEmail(),req.getSalary());
-
-    // 5.5️⃣ Check if customer already has an active connection
     CustomerConnection existing = connectionRepo.findActiveByCustomerId(customer.getCustomerId());
     if (existing != null) {
         throw new RuntimeException("Customer already has an active connection (ID: " + existing.getConnectionId() + ")");
     }
-
-    // =================================
-    // 6️⃣ Insert customer connection (CORE)
-    // TABLE: customer_connections
-    // =================================
     CustomerConnection connection =
     new CustomerConnection(
         customer.getCustomerId(),
         selectedPlan.getPlanId(),
         portId,
         serviceArea.getServiceAreaId(),
-        LocalDate.now(),   // activated_on
-        10,                // billing_day (default)
-        currentUserId      // created_by (admin / csr)
+        LocalDate.now(),
+        10,
+        currentUserId
     );
-
-
     connectionRepo.insert(connection);
-    // 🔥 INSERT INTO customer_connections
-    // =================================
-    // 7️⃣ Create billing entry (bills)
-    // =================================
    BigDecimal planCharge = selectedPlan.getMonthlyPrice();
    BigDecimal gstAmount = planCharge.multiply(new BigDecimal("0.18"));
-
 Bill bill = new Bill(
     BillUtil.generateBillNo(),
     customer.getCustomerId(),
@@ -122,12 +82,8 @@ Bill bill = new Bill(
     gstAmount
 );
 billRepository.insert(bill);
-    // =================================
-    // 8️⃣ Send confirmation email 
-    
     email.sendConnectionConfirmation(customer, connection, selectedPlan);
-
-  
+    return connection;
 }
 public void updateCustomerConnection(CustomerConnection connection,
                          long newPincode,
