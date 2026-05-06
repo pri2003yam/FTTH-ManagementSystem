@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
-import { Overlay, Field, inputStyle, primaryBtn, cancelBtn, modalBox, modalTitle, errText, focusBorder, blurBorder } from "./UsersShared";
+import Modal from "../../components/ui/Modal";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import { errText } from "./UsersShared";
 
 const ROLES = [
   { value: "CSR", label: "CSR" },
@@ -14,76 +17,29 @@ interface Props {
 }
 
 export default function CreateUserForm({ onClose, onSuccess }: Props) {
-  const [newUser, setNewUser] = useState({ username: "", password: "", role: "CSR" });
-  const [createError, setCreateError] = useState("");
-  const [createLoading, setCreateLoading] = useState(false);
+  const [form, setForm] = useState({ username: "", password: "", role: "CSR" });
+  const [error, setError] = useState("");
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateError("");
-    if (!newUser.username.trim()) {
-      setCreateError("Username is required.");
-      return;
-    }
-    if (!newUser.password.trim()) {
-      setCreateError("Password is required.");
-      return;
-    }
-    setCreateLoading(true);
+  const handleCreate = async () => {
+    setError("");
+    if (!form.username.trim()) { setError("Username is required."); return; }
+    if (!form.password.trim()) { setError("Password is required."); return; }
     try {
-      await api.post(ENDPOINTS.USERS, newUser);
+      await api.post(ENDPOINTS.USERS, form);
       onSuccess();
     } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err.message : "Failed to create user.");
-    } finally {
-      setCreateLoading(false);
+      setError(err instanceof Error ? err.message : "Failed to create user.");
     }
   };
 
   return (
-    <Overlay>
-      <div style={modalBox}>
-        <h2 style={modalTitle}>Create New User</h2>
-        <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Field label="Username">
-            <input
-              value={newUser.username}
-              onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-              placeholder="Enter username"
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </Field>
-          <Field label="Password">
-            <input
-              type="password"
-              value={newUser.password}
-              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              placeholder="Enter password"
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </Field>
-          <Field label="Role">
-            <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              style={inputStyle}
-            >
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </Field>
-          {createError && <p style={errText}>{createError}</p>}
-          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
-            <button type="button" onClick={onClose} style={cancelBtn}>Cancel</button>
-            <button type="submit" disabled={createLoading} style={primaryBtn}>
-              {createLoading ? "Creating..." : "Create User"}
-            </button>
-          </div>
-        </form>
+    <Modal open title="Create New User" onConfirm={handleCreate} onCancel={onClose} confirmLabel="Create User">
+      <div className="space-y-3">
+        <Input label="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="Enter username" />
+        <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Enter password" />
+        <Select label="Role" value={form.role} options={ROLES} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+        {error && <p style={errText}>{error}</p>}
       </div>
-    </Overlay>
+    </Modal>
   );
 }

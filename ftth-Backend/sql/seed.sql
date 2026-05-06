@@ -16,10 +16,10 @@ INSERT INTO roles (role_code) VALUES ('ADMIN'), ('CSR'), ('MAINT');
 -- ============================================================
 
 INSERT INTO users (username, password_hash, role_id, is_active) VALUES
-('admin',    'admin123', 1, TRUE),
-('csr1',     'csr123',   2, TRUE),
-('maint1',   'maint123', 3, TRUE),
-('testuser', 'test123',  2, TRUE);
+('admin',    'admin123',  1, TRUE),
+('csr1',     'csr123',    2, TRUE),
+('maint1',   'maint123',  3, TRUE),
+('testuser', 'test123',   2, TRUE);
 
 -- ============================================================
 -- 3. service_areas  (6 cities, 5-6 pincodes each)

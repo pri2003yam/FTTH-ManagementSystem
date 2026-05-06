@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
-import { Overlay, Field, inputStyle, primaryBtn, cancelBtn, modalBox, modalTitle, errText, focusBorder, blurBorder } from "./UsersShared";
+import Modal from "../../components/ui/Modal";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import { errText } from "./UsersShared";
 
 const ROLES = [
   { value: "CSR", label: "CSR" },
@@ -16,61 +19,26 @@ interface Props {
 }
 
 export default function EditUserModal({ username, currentRole, onClose, onSuccess }: Props) {
-  const [editUser, setEditUser] = useState({ role: currentRole, password: "" });
-  const [editError, setEditError] = useState("");
-  const [editLoading, setEditLoading] = useState(false);
+  const [form, setForm] = useState({ role: currentRole, password: "" });
+  const [error, setError] = useState("");
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEditError("");
-    setEditLoading(true);
+  const handleEdit = async () => {
+    setError("");
     try {
-      await api.put(ENDPOINTS.USER_BY_USERNAME(username), {
-        role: editUser.role,
-        password: editUser.password,
-      });
+      await api.put(ENDPOINTS.USER_BY_USERNAME(username), { role: form.role, password: form.password });
       onSuccess();
     } catch (err: unknown) {
-      setEditError(err instanceof Error ? err.message : "Failed to update user.");
-    } finally {
-      setEditLoading(false);
+      setError(err instanceof Error ? err.message : "Failed to update user.");
     }
   };
 
   return (
-    <Overlay>
-      <div style={modalBox}>
-        <h2 style={modalTitle}>Edit User — {username}</h2>
-        <form onSubmit={handleEdit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Field label="New Password (leave blank to keep)">
-            <input
-              type="password"
-              value={editUser.password}
-              onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
-              placeholder="New password"
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </Field>
-          <Field label="Role">
-            <select
-              value={editUser.role}
-              onChange={(e) => setEditUser({ ...editUser, role: e.target.value })}
-              style={inputStyle}
-            >
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-          </Field>
-          {editError && <p style={errText}>{editError}</p>}
-          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
-            <button type="button" onClick={onClose} style={cancelBtn}>Cancel</button>
-            <button type="submit" disabled={editLoading} style={primaryBtn}>
-              {editLoading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
+    <Modal open title={`Edit User — ${username}`} onConfirm={handleEdit} onCancel={onClose} confirmLabel="Save Changes">
+      <div className="space-y-3">
+        <Input label="New Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep current password" />
+        <Select label="Role" value={form.role} options={ROLES} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+        {error && <p style={errText}>{error}</p>}
       </div>
-    </Overlay>
+    </Modal>
   );
 }

@@ -31,16 +31,12 @@ public UserManagerService(UserRepository userRepository,RoleRepository roleRepos
         if (user == null || !user.isActive()) {
             return null;
         }
-    
-        // if (!PasswordUtil.matches(password, user.getPasswordHash())) {
-        //     return null;
-        // }
-       if (!password.equals(user.getPasswordHash())) {
+
+        if (!password.equals(user.getPasswordHash())) {
             return null;
         }
 
-
-        return user; // ✅ logged-in user
+        return user;
     }
     /**
      * Get Role for logged-in user.
