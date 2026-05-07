@@ -54,11 +54,21 @@ export default function RemoveOltForm({ onSuccess }: Props) {
     {
       key: "action",
       header: "",
-      render: (r: OltInventoryDTO) => (
-        <Button variant="danger" className="text-xs px-2 py-1" onClick={() => setSelected(r.oltCode)}>
-          Remove
-        </Button>
-      ),
+      render: (r: OltInventoryDTO) => {
+        const hasCustomers = r.availablePorts < r.totalPorts;
+        return (
+          <Button
+            variant="danger"
+            className="text-xs px-2 py-1"
+            onClick={() => setSelected(r.oltCode)}
+            disabled={hasCustomers}
+            style={hasCustomers ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+            title={hasCustomers ? "Cannot remove — has assigned ports" : "Remove OLT"}
+          >
+            Remove
+          </Button>
+        );
+      },
     },
   ];
 

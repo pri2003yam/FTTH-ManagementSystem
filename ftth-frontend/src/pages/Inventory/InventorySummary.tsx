@@ -17,6 +17,7 @@ export default function InventorySummary() {
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
 
   const [searchBy, setSearchBy] = useState<SearchBy>("");
   const [pincodeValue, setPincodeValue] = useState("");
@@ -38,7 +39,6 @@ export default function InventorySummary() {
         all.push(...olts);
       }
       setAllData(all);
-      setFiltered(all);
     } catch {
       setError("Failed to load inventory data.");
     } finally {
@@ -54,13 +54,15 @@ export default function InventorySummary() {
     } else {
       setFiltered(allData);
     }
+    setSearched(true);
   };
 
   const handleReset = () => {
     setSearchBy("");
     setPincodeValue("");
     setOltTypeValue("");
-    setFiltered(allData);
+    setFiltered([]);
+    setSearched(false);
   };
 
   if (loading) return <Loader />;
@@ -147,7 +149,15 @@ export default function InventorySummary() {
         )}
       </div>
 
-      <Table columns={columns} data={filtered} keyField="oltCode" />
+      {searched ? (
+        filtered.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "#6b7280" }}>No inventory matches your search.</p>
+        ) : (
+          <Table columns={columns} data={filtered} keyField="oltCode" />
+        )
+      ) : (
+        <p style={{ fontSize: "13px", color: "#9ca3af" }}>Use the filters above to search inventory.</p>
+      )}
     </Card>
   );
 }

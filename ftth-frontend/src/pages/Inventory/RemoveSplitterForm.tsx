@@ -64,11 +64,21 @@ export default function RemoveSplitterForm({ onSuccess }: Props) {
     {
       key: "action",
       header: "",
-      render: (r: SplitterDetail) => (
-        <Button variant="danger" className="text-xs px-2 py-1" onClick={() => setToRemove(r.splitterNumber)}>
-          Remove
-        </Button>
-      ),
+      render: (r: SplitterDetail) => {
+        const hasCustomers = r.availablePorts < r.totalPorts;
+        return (
+          <Button
+            variant="danger"
+            className="text-xs px-2 py-1"
+            onClick={() => setToRemove(r.splitterNumber)}
+            disabled={hasCustomers}
+            style={hasCustomers ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+            title={hasCustomers ? "Cannot remove — has assigned ports" : "Remove splitter"}
+          >
+            Remove
+          </Button>
+        );
+      },
     },
   ];
 
