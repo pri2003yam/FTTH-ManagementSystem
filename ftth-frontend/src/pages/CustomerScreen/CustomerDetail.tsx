@@ -11,7 +11,6 @@ interface CustomerInfo {
   customerCode: string;
   fullName: string;
   email: string;
-  salary: number;
   status: string;
 }
 
@@ -75,7 +74,6 @@ export default function CustomerDetail({ customerCode }: { customerCode: string 
           <span style={{ color: "#6b7280" }}>Customer Code</span><span style={{ fontWeight: 600 }}>{customer.customerCode}</span>
           <span style={{ color: "#6b7280" }}>Name</span><span>{customer.fullName}</span>
           <span style={{ color: "#6b7280" }}>Email</span><span>{customer.email}</span>
-          <span style={{ color: "#6b7280" }}>Salary</span><span>Rs. {customer.salary}</span>
         </div>
 
         {connection && (

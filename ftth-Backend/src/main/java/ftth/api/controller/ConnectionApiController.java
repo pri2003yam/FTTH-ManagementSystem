@@ -276,6 +276,95 @@ public class ConnectionApiController {
         }
     }
 
+    // ── List Disconnected Connections ────────────────────────────
+    @GetMapping("/disconnected")
+    public ResponseEntity<List<Map<String, Object>>> getDisconnectedConnections() {
+        String sql =
+            "SELECT cc.connection_id, c.customer_code, c.full_name, sa.pincode, " +
+            "p.plan_name, p.monthly_price, o.olt_type, o.olt_code, " +
+            "s.splitter_number, pt.port_number, cc.plan_id, cc.service_area_id, cc.disconnected_on " +
+            "FROM customer_connections cc " +
+            "JOIN customers c ON c.customer_id = cc.customer_id " +
+            "JOIN plans p ON p.plan_id = cc.plan_id " +
+            "JOIN ports pt ON pt.port_id = cc.port_id " +
+            "JOIN splitters s ON s.splitter_id = pt.splitter_id " +
+            "JOIN olts o ON o.olt_id = s.olt_id " +
+            "JOIN service_areas sa ON sa.service_area_id = cc.service_area_id " +
+            "WHERE cc.connection_status = 'DISCONNECTED' " +
+            "ORDER BY cc.disconnected_on DESC";
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        try (java.sql.Connection con = ftth.config.DbConnection.getConnection();
+             java.sql.PreparedStatement ps = con.prepareStatement(sql);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("connectionId",   rs.getLong("connection_id"));
+                row.put("customerCode",   rs.getString("customer_code"));
+                row.put("fullName",       rs.getString("full_name"));
+                row.put("pincode",        rs.getString("pincode"));
+                row.put("planName",       rs.getString("plan_name"));
+                row.put("monthlyPrice",   rs.getDouble("monthly_price"));
+                row.put("oltType",        rs.getString("olt_type"));
+                row.put("oltCode",        rs.getString("olt_code"));
+                row.put("splitterNumber", rs.getInt("splitter_number"));
+                row.put("portNumber",     rs.getInt("port_number"));
+                row.put("planId",         rs.getLong("plan_id"));
+                row.put("serviceAreaId",  rs.getLong("service_area_id"));
+                row.put("disconnectedOn", rs.getDate("disconnected_on") != null ? rs.getDate("disconnected_on").toString() : null);
+                rows.add(row);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+        return ResponseEntity.ok(rows);
+    }
+
+    // ── Reactivate (DISCONNECTED → ACTIVE) ───────────────────────
+    @PostMapping("/{connectionId}/reactivate")
+    public ResponseEntity<Map<String, String>> reactivate(
+            @PathVariable(value = "connectionId") Long connectionId,
+            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
+
+        Map<String, String> result = new HashMap<>();
+        try {
+            CustomerConnection conn = connectionRepo.findById(connectionId);
+            if (conn == null) {
+                result.put("message", "Connection not found.");
+                return ResponseEntity.badRequest().body(result);
+            }
+            if (conn.isActive()) {
+                result.put("message", "Connection is already active.");
+                return ResponseEntity.badRequest().body(result);
+            }
+            // Allocate a new port in the same service area with same OLT type
+            Plan plan = planService.findPlanById(conn.getPlanId());
+            Long newPortId = inventoryService.allocatePort(conn.getServiceAreaId(), plan.getOltType());
+            // Update connection: set ACTIVE, clear disconnected_on, assign new port
+            String sql = "UPDATE customer_connections SET connection_status = 'ACTIVE', " +
+                         "disconnected_on = NULL, port_id = ?, updated_by = ? WHERE connection_id = ?";
+            try (java.sql.Connection con = ftth.config.DbConnection.getConnection();
+                 java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setLong(1, newPortId);
+                ps.setLong(2, userId);
+                ps.setLong(3, connectionId);
+                ps.executeUpdate();
+            }
+            // Reactivate customer status
+            String custSql = "UPDATE customers SET status = 'ACTIVE' WHERE customer_id = ?";
+            try (java.sql.Connection con = ftth.config.DbConnection.getConnection();
+                 java.sql.PreparedStatement ps = con.prepareStatement(custSql)) {
+                ps.setLong(1, conn.getCustomerId());
+                ps.executeUpdate();
+            }
+            result.put("message", "Connection reactivated successfully.");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("message", e.getMessage() != null ? e.getMessage() : "Failed to reactivate.");
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
     // ── Disconnect ───────────────────────────────────────────────
     @PostMapping("/{connectionId}/disconnect")
     public ResponseEntity<Map<String, String>> disconnect(

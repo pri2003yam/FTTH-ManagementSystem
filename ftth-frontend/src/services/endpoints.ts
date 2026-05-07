@@ -21,6 +21,8 @@ export const ENDPOINTS = {
   CONNECTION_BY_ID: (id: number) => `/api/connections/${id}`,
   CONNECTION_NEW_INSTALL: "/api/connections/new-install",
   CONNECTION_ACTIVE: "/api/connections/active",
+  CONNECTION_DISCONNECTED: "/api/connections/disconnected",
+  CONNECTION_REACTIVATE: (id: number) => `/api/connections/${id}/reactivate`,
   CONNECTION_AVAILABLE_PLANS: (id: number) => `/api/connections/${id}/available-plans`,
   CONNECTION_CHANGE_PLAN: (id: number) => `/api/connections/${id}/change-plan`,
   CONNECTION_CHECK_MOVE: (id: number, pincode: string) => `/api/connections/${id}/check-move?pincode=${pincode}`,
