@@ -363,7 +363,6 @@ private void disconnectCustomer(Scanner sc, Customer customer,User currentUser) 
             System.out.println("[1] Generate Bill");
             System.out.println("[2] View Bills");
             System.out.println("[3] Mark Bill as Paid");
-            System.out.println("[4] Mark Bill as Overdue");
             System.out.println("[0] Back");
             System.out.print("Select Option: ");
 
@@ -372,7 +371,6 @@ private void disconnectCustomer(Scanner sc, Customer customer,User currentUser) 
                 case "1": generateBill(sc, customer); break;
                 case "2": viewBills(customer); break;
                 case "3": markBillPaid(sc, customer); break;
-                case "4": markBillOverdue(sc, customer); break;
                 case "0": back = true; break;
                 default: System.out.println("Invalid option.");
             }
@@ -411,8 +409,7 @@ private void disconnectCustomer(Scanner sc, Customer customer,User currentUser) 
             plan
         );
 
-        billService.printBill(bill, customer);
-        System.out.println("Bill generated successfully.");
+        System.out.println("Bill " + bill.getBillNo() + " generated. Total: Rs." + bill.getTotalAmount().setScale(2));
     }
 
     private void viewBills(Customer customer) {
@@ -464,29 +461,7 @@ private void disconnectCustomer(Scanner sc, Customer customer,User currentUser) 
         }
     }
 
-    private void markBillOverdue(Scanner sc, Customer customer) {
 
-        viewBills(customer);
-
-        List<Bill> bills = billService.getBillsForCustomer(customer.getCustomerId());
-        if (bills.isEmpty()) return;
-
-        System.out.print("\nEnter Bill ID to mark as OVERDUE: ");
-        long billId;
-        try {
-            billId = Long.parseLong(sc.nextLine().trim());
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid Bill ID.");
-            return;
-        }
-
-        try {
-            billService.markOverdueIfRequired(billId);
-            System.out.println("Bill " + billId + " marked as OVERDUE.");
-        } catch (RuntimeException e) {
-            System.out.println("[ERROR] " + e.getMessage());
-        }
-    }
 
     // ============================
     // UI HELPER

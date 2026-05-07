@@ -188,7 +188,16 @@ public void changePlan(Long connectionId,
         currentUserId
     );
 
-    // 5️⃣ Notify customer
+    // 5️⃣ Generate differential bill (only the price difference for remaining days)
+    BillService billService = new BillService(billRepository);
+    billService.generatePlanChangeBill(
+        connection.getCustomerId(),
+        connection.getConnectionId(),
+        oldPlan,
+        newPlan
+    );
+
+    // 6️⃣ Notify customer
     Customer customer =customerRepo.findById(connection.getCustomerId());
 
     email.sendPlanChangeEmail(
