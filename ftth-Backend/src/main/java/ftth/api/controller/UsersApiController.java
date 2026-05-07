@@ -34,10 +34,23 @@ public class UsersApiController {
             Map<String, String> row = new HashMap<>();
             row.put("username", u[0]);
             row.put("role", u[2]);
-            row.put("status", "Active");
+            row.put("status", u.length > 3 ? u[3] : "Active");
             result.add(row);
         }
         return ResponseEntity.ok(result);
+    }
+
+    @PatchMapping("/{username}/toggle-status")
+    public ResponseEntity<Map<String, String>> toggleStatus(@PathVariable String username) {
+        boolean ok = new UserRepository().toggleActive(username);
+        Map<String, String> res = new HashMap<>();
+        if (ok) {
+            res.put("message", "User status toggled");
+            return ResponseEntity.ok(res);
+        } else {
+            res.put("message", "Failed to toggle status.");
+            return ResponseEntity.badRequest().body(res);
+        }
     }
 
     @PostMapping
