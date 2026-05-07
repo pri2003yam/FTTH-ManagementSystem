@@ -50,12 +50,12 @@ public class CustomerApiController {
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> listCustomers() {
         String sql =
-            "SELECT c.customer_id, c.customer_code, c.full_name, c.email, c.salary, c.status, " +
+            "SELECT c.customer_id, c.customer_code, c.full_name, c.email, c.status, " +
             "sa.pincode " +
             "FROM customers c " +
             "LEFT JOIN customer_connections cc ON cc.customer_id = c.customer_id AND cc.connection_status = 'ACTIVE' " +
             "LEFT JOIN service_areas sa ON sa.service_area_id = cc.service_area_id " +
-            "GROUP BY c.customer_id, c.customer_code, c.full_name, c.email, c.salary, c.status, sa.pincode " +
+            "GROUP BY c.customer_id, c.customer_code, c.full_name, c.email, c.status, sa.pincode " +
             "ORDER BY c.customer_id";
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -69,7 +69,6 @@ public class CustomerApiController {
                 row.put("customerCode", rs.getString("customer_code"));
                 row.put("fullName", rs.getString("full_name"));
                 row.put("email", rs.getString("email"));
-                row.put("salary", rs.getDouble("salary"));
                 row.put("status", rs.getString("status"));
                 row.put("pincode", rs.getString("pincode"));
                 result.add(row);
@@ -93,7 +92,6 @@ public class CustomerApiController {
         result.put("customerCode", c.getCustomerCode());
         result.put("fullName", c.getFullName());
         result.put("email", c.getEmail());
-        result.put("salary", c.getSalary());
         result.put("status", c.getStatus().name());
         return ResponseEntity.ok(result);
     }

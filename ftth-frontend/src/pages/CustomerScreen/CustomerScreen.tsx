@@ -12,7 +12,6 @@ interface CustomerRow {
   customerCode: string;
   fullName: string;
   email: string;
-  salary: number;
   status: string;
   pincode: string | null;
 }
@@ -88,7 +87,7 @@ export default function CustomerScreen() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr style={{ background: "#f1f5f9" }}>
-                  {["Code", "Name", "Email", "Salary", "Pincode"].map((h) => (
+                  {["Code", "Name", "Email", "Pincode"].map((h) => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
@@ -103,7 +102,6 @@ export default function CustomerScreen() {
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{c.customerCode}</td>
                     <td style={tdStyle}>{c.fullName}</td>
                     <td style={{ ...tdStyle, color: "#6b7280" }}>{c.email}</td>
-                    <td style={tdStyle}>Rs. {c.salary}</td>
                     <td style={tdStyle}>{c.pincode || "-"}</td>
                   </tr>
                 ))}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
@@ -54,7 +54,7 @@ export default function Connections() {
   const location = useLocation();
   const [view, setView] = useState<View>((location.state as any)?.view ?? "menu");
 
-  // ── New Install state ──
+  // â”€â”€ New Install state â”€â”€
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
@@ -71,7 +71,7 @@ export default function Connections() {
   const [niOltLoading, setNiOltLoading] = useState(false);
   const [niCreatedConn, setNiCreatedConn] = useState<any>(null);
 
-  // ── Change Plan state ──
+  // â”€â”€ Change Plan state â”€â”€
   const [activeConns, setActiveConns] = useState<ActiveConnection[]>([]);
   const [connsLoading, setConnsLoading] = useState(false);
   const [connsError, setConnsError] = useState("");
@@ -85,7 +85,7 @@ export default function Connections() {
   const [cpSuccess, setCpSuccess] = useState("");
   const [cpSuccessData, setCpSuccessData] = useState<any>(null);
 
-  // ── Move state ──
+  // â”€â”€ Move state â”€â”€
   const [moveConn, setMoveConn] = useState<ActiveConnection | null>(null);
   const [movePincode, setMovePincode] = useState("");
   const [movePincodeSuggestions, setMovePincodeSuggestions] = useState<string[]>([]);
@@ -97,18 +97,21 @@ export default function Connections() {
   const [moveError, setMoveError] = useState("");
   const [moveSuccess, setMoveSuccess] = useState("");
   const [moveSuccessData, setMoveSuccessData] = useState<any>(null);
-  // ── Disconnect state ──
+  // â”€â”€ Disconnect state â”€â”€
   const [dcConns, setDcConns] = useState<ActiveConnection[]>([]);
+  const [dcDisconnectedConns, setDcDisconnectedConns] = useState<ActiveConnection[]>([]);
+  const [dcShowDisconnected, setDcShowDisconnected] = useState(false);
   const [dcConnsLoading, setDcConnsLoading] = useState(false);
   const [dcConnsError, setDcConnsError] = useState("");
   const [dcSearchName, setDcSearchName] = useState("");
   const [dcSelected, setDcSelected] = useState<ActiveConnection | null>(null);
   const [dcConfirming, setDcConfirming] = useState(false);
+  const [dcReactivating, setDcReactivating] = useState(false);
+  const [dcReactivateSuccess, setDcReactivateSuccess] = useState("");
   const [dcLoading, setDcLoading] = useState(false);
   const [dcError, setDcError] = useState("");
-  const [dcSuccess, setDcSuccess] = useState("");
 
-  // ── Load data on view change ──
+  const [dcSuccess, setDcSuccess] = useState("");
   useEffect(() => {
     if (view === "new-install") {
       setNiDataLoading(true);
@@ -158,14 +161,19 @@ export default function Connections() {
       setDcError("");
       setDcSuccess("");
       setDcSearchName("");
-      api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_ACTIVE)
-        .then(setDcConns)
+      setDcShowDisconnected(false);
+      setDcReactivateSuccess("");
+      Promise.all([
+        api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_ACTIVE),
+        api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_DISCONNECTED),
+      ])
+        .then(([active, disconnected]) => { setDcConns(active); setDcDisconnectedConns(disconnected); })
         .catch((err) => setDcConnsError(err instanceof Error ? err.message : "Failed to load connections."))
         .finally(() => setDcConnsLoading(false));
     }
   }, [view]);
 
-  // ── Load available plans when a connection is selected ──
+  // â”€â”€ Load available plans when a connection is selected â”€â”€
   useEffect(() => {
     if (!selectedConn) return;
     setAvailPlansLoading(true);
@@ -318,6 +326,26 @@ export default function Connections() {
     );
   };
 
+  const handleReactivate = async (conn: ActiveConnection) => {
+    setDcReactivating(true);
+    setDcError("");
+    setDcReactivateSuccess("");
+    try {
+      await api.post(ENDPOINTS.CONNECTION_REACTIVATE(conn.connectionId), {});
+      setDcReactivateSuccess(`${conn.fullName} (${conn.customerCode}) reactivated successfully.`);
+      const [active, disconnected] = await Promise.all([
+        api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_ACTIVE),
+        api.get<ActiveConnection[]>(ENDPOINTS.CONNECTION_DISCONNECTED),
+      ]);
+      setDcConns(active);
+      setDcDisconnectedConns(disconnected);
+    } catch (err: unknown) {
+      setDcError(err instanceof Error ? err.message : "Failed to reactivate.");
+    } finally {
+      setDcReactivating(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!dcSelected) return;
     setDcLoading(true);
@@ -388,12 +416,12 @@ export default function Connections() {
         ))}
       </div>
 
-      {/* ── NEW INSTALL ── */}
+      {/* â”€â”€ NEW INSTALL â”€â”€ */}
       {view === "new-install" && (
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>New Install</h2>
-            <button onClick={goBack} style={cancelBtn}>← Back</button>
+            <button onClick={goBack} style={cancelBtn}>â† Back</button>
           </div>
 
           {niDataLoading ? (
@@ -402,7 +430,7 @@ export default function Connections() {
             <p style={{ fontSize: "13px", color: "#dc2626" }}>{niDataError}</p>
           ) : (
             <>
-              {/* TOP ─ Customer Details Form — original box size */}
+              {/* TOP â”€ Customer Details Form â€” original box size */}
               <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", padding: "24px", maxWidth: "480px", marginBottom: "24px" }}>
                 <p style={{ ...sectionLabel, marginBottom: "16px" }}>CUSTOMER DETAILS</p>
                 <form onSubmit={handleNewInstall} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -414,7 +442,7 @@ export default function Connections() {
                     <input type="email" value={niForm.email} onChange={(e) => setNiForm({ ...niForm, email: e.target.value })}
                       required placeholder="Enter email address" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
                   </Field>
-                  <Field label="Salary (Rs.)">
+                  <Field label="Monthly Salary (Rs.)">
                     <input type="number" value={niForm.salary} onChange={(e) => setNiForm({ ...niForm, salary: e.target.value })}
                       required placeholder="Minimum Rs. 30,000" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
                   </Field>
@@ -489,7 +517,7 @@ export default function Connections() {
                 </form>
               </div>
 
-              {/* BOTTOM ─ Plans shown only after pincode selected */}
+              {/* BOTTOM â”€ Plans shown only after pincode selected */}
               {niForm.pincode && niOltTypes.length > 0 && (
                 <>
                   <p style={sectionLabel}>SELECT A PLAN FOR PINCODE {niForm.pincode}</p>
@@ -569,7 +597,7 @@ export default function Connections() {
                   {selectedPlanId && (
                     <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px" }}>
                       <p style={{ fontSize: "13px", color: "#166534", margin: "0 0 12px 0", fontWeight: 500 }}>
-                        ✓ Selected Plan: {plans.find(p => p.planId === selectedPlanId)!.planName} — Rs.{plans.find(p => p.planId === selectedPlanId)!.monthlyPrice}/mo
+                        âœ“ Selected Plan: {plans.find(p => p.planId === selectedPlanId)!.planName} â€” Rs.{plans.find(p => p.planId === selectedPlanId)!.monthlyPrice}/mo
                       </p>
                       {niError && <p style={{ ...errText, marginBottom: "12px" }}>{niError}</p>}
                       <div style={{ display: "flex", gap: "8px" }}>
@@ -587,11 +615,11 @@ export default function Connections() {
                 </>
               )}
 
-              {/* ✅ Green success box — same width as form, compact */}
+              {/* âœ… Green success box â€” same width as form, compact */}
               {niCreatedConn && (
                 <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Connection Created Successfully</p>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>âœ… Connection Created Successfully</p>
                     <button onClick={() => setNiCreatedConn(null)} style={cancelBtn}>Done</button>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -600,7 +628,7 @@ export default function Connections() {
                       ["Customer Code", niCreatedConn.customerCode],
                       ["Customer Name", niCreatedConn.fullName],
                       ["Pincode",       niCreatedConn.pincode],
-                      ["Plan",          `${niCreatedConn.planName} — Rs.${niCreatedConn.monthlyPrice}/mo`],
+                      ["Plan",          `${niCreatedConn.planName} â€” Rs.${niCreatedConn.monthlyPrice}/mo`],
                       ["OLT Type",      niCreatedConn.oltType],
                       ["OLT Code",      niCreatedConn.oltCode],
                       ["Port Assigned", `Splitter ${niCreatedConn.splitterNumber} / Port ${niCreatedConn.portNumber}`],
@@ -618,15 +646,15 @@ export default function Connections() {
         </div>
       )}
 
-      {/* ── CHANGE PLAN ── */}
+      {/* â”€â”€ CHANGE PLAN â”€â”€ */}
       {view === "change" && (
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Change Plan</h2>
-            <button onClick={goBack} style={cancelBtn}>← Back</button>
+            <button onClick={goBack} style={cancelBtn}>â† Back</button>
           </div>
 
-          {/* Search bar — Change Plan */}
+          {/* Search bar â€” Change Plan */}
           <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
             <input
               value={cpSearchName}
@@ -689,11 +717,11 @@ export default function Connections() {
             <>
               <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", marginBottom: "16px" }}>
                 <p style={{ fontSize: "13px", color: "#166534", margin: 0 }}>
-                  Selected: <strong>{selectedConn.fullName}</strong> ({selectedConn.customerCode}) — Current plan: <strong>{selectedConn.planName}</strong> @ Rs.{selectedConn.monthlyPrice}
+                  Selected: <strong>{selectedConn.fullName}</strong> ({selectedConn.customerCode}) â€” Current plan: <strong>{selectedConn.planName}</strong> @ Rs.{selectedConn.monthlyPrice}
                 </p>
               </div>
 
-              <p style={sectionLabel}>AVAILABLE PLANS — click a row to select new plan</p>
+              <p style={sectionLabel}>AVAILABLE PLANS â€” click a row to select new plan</p>
               <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "20px" }}>
                 {availPlansLoading ? (
                   <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>Loading available plans...</p>
@@ -734,9 +762,9 @@ export default function Connections() {
               {selectedNewPlan && (
                 <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "4px", padding: "12px 16px", marginBottom: "16px" }}>
                   <p style={{ fontSize: "13px", color: "#1e40af", margin: 0 }}>
-                    Change from <strong>{selectedConn.planName}</strong> → <strong>{selectedNewPlan.planName}</strong> @ Rs.{selectedNewPlan.monthlyPrice}
+                    Change from <strong>{selectedConn.planName}</strong> â†’ <strong>{selectedNewPlan.planName}</strong> @ Rs.{selectedNewPlan.monthlyPrice}
                     {selectedConn.oltType !== selectedNewPlan.oltType && (
-                      <span style={{ color: "#b45309", marginLeft: "8px" }}>⚠ OLT type will change, port will be reallocated.</span>
+                      <span style={{ color: "#b45309", marginLeft: "8px" }}>âš  OLT type will change, port will be reallocated.</span>
                     )}
                   </p>
                 </div>
@@ -761,11 +789,11 @@ export default function Connections() {
         </div>
       )}
 
-      {/* ── CHANGE PLAN SUCCESS BOX ── */}
+      {/* â”€â”€ CHANGE PLAN SUCCESS BOX â”€â”€ */}
       {cpSuccessData && view === "change" && (
         <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Plan Changed Successfully</p>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>âœ… Plan Changed Successfully</p>
             <button onClick={() => setCpSuccessData(null)} style={cancelBtn}>Done</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -773,7 +801,7 @@ export default function Connections() {
               ["Customer",  `${cpSuccessData.fullName} (${cpSuccessData.customerCode})`],
               ["Pincode",   cpSuccessData.pincode],
               ["Old Plan",  cpSuccessData.oldPlan],
-              ["New Plan",  `${cpSuccessData.newPlan} — Rs.${cpSuccessData.newPrice}/mo`],
+              ["New Plan",  `${cpSuccessData.newPlan} â€” Rs.${cpSuccessData.newPrice}/mo`],
               ["OLT Type",  cpSuccessData.oltType],
             ].map(([label, value]) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
@@ -785,12 +813,12 @@ export default function Connections() {
         </div>
       )}
 
-      {/* ── MOVE ── */}
+      {/* â”€â”€ MOVE â”€â”€ */}
       {view === "move" && (
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Move Customer</h2>
-            <button onClick={goBack} style={cancelBtn}>← Back</button>
+            <button onClick={goBack} style={cancelBtn}>â† Back</button>
           </div>
 
           {/* Search */}
@@ -857,7 +885,7 @@ export default function Connections() {
             <>
               <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", marginBottom: "16px" }}>
                 <p style={{ fontSize: "13px", color: "#166534", margin: 0 }}>
-                  Selected: <strong>{moveConn.fullName}</strong> ({moveConn.customerCode}) — Current pincode: <strong>{moveConn.pincode}</strong> — OLT: <strong>{moveConn.oltType}</strong>
+                  Selected: <strong>{moveConn.fullName}</strong> ({moveConn.customerCode}) â€” Current pincode: <strong>{moveConn.pincode}</strong> â€” OLT: <strong>{moveConn.oltType}</strong>
                 </p>
               </div>
 
@@ -938,7 +966,7 @@ export default function Connections() {
                     {moveCheck.message}
                     {moveCheck.available && (
                       <span style={{ marginLeft: "8px" }}>
-                        (Move from <strong>{moveConn.pincode}</strong> → <strong>{movePincode}</strong>)
+                        (Move from <strong>{moveConn.pincode}</strong> â†’ <strong>{movePincode}</strong>)
                       </span>
                     )}
                   </p>
@@ -964,11 +992,11 @@ export default function Connections() {
         </div>
       )}
 
-      {/* ── MOVE SUCCESS BOX ── */}
+      {/* â”€â”€ MOVE SUCCESS BOX â”€â”€ */}
       {moveSuccessData && view === "move" && (
         <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px", maxWidth: "480px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>✅ Customer Moved Successfully</p>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "#166534", margin: 0 }}>âœ… Customer Moved Successfully</p>
             <button onClick={() => setMoveSuccessData(null)} style={cancelBtn}>Done</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -988,7 +1016,7 @@ export default function Connections() {
         </div>
       )}
 
-      {/* ── DISCONNECT ── */}
+      {/* â”€â”€ DISCONNECT â”€â”€ */}
       {view === "disconnect" && (
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
@@ -996,109 +1024,174 @@ export default function Connections() {
             <button onClick={goBack} style={cancelBtn}>← Back</button>
           </div>
 
-          {/* Search bar — Disconnect */}
-          <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
-            <input
-              value={dcSearchName}
-              onChange={(e) => { setDcSearchName(e.target.value); setDcSelected(null); setDcConfirming(false); }}
-              placeholder="Search by customer code, name, or pincode..."
-              style={{ ...inputStyle, width: "500px" }}
-              onFocus={focusBorder} onBlur={blurBorder}
-            />
-            {dcSearchName && (
-              <button onClick={() => { setDcSearchName(""); }} style={cancelBtn}>Clear</button>
-            )}
+          {/* Toggle */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <button
+              onClick={() => { setDcShowDisconnected(false); setDcSelected(null); setDcConfirming(false); setDcSearchName(""); setDcReactivateSuccess(""); }}
+              style={{ ...cancelBtn, background: !dcShowDisconnected ? "#256D85" : "#ffffff", color: !dcShowDisconnected ? "#ffffff" : "#111827", border: "1px solid #256D85" }}
+            >Active Connections</button>
+            <button
+              onClick={() => { setDcShowDisconnected(true); setDcSelected(null); setDcConfirming(false); setDcSearchName(""); setDcReactivateSuccess(""); }}
+              style={{ ...cancelBtn, background: dcShowDisconnected ? "#256D85" : "#ffffff", color: dcShowDisconnected ? "#ffffff" : "#111827", border: "1px solid #256D85" }}
+            >Disconnected ({dcDisconnectedConns.length})</button>
           </div>
 
-          {/* Search Results */}
           {dcConnsLoading && <p style={{ fontSize: "13px", color: "#6b7280" }}>Loading...</p>}
           {dcConnsError && <p style={{ fontSize: "13px", color: "#dc2626" }}>{dcConnsError}</p>}
-          {!dcConnsLoading && dcSearchName.length >= 2 && (() => {
-            const q = dcSearchName.toLowerCase();
-            const filtered = dcConns.filter((c) =>
-              c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q)
-            );
-            return filtered.length === 0 ? (
-              <p style={{ fontSize: "13px", color: "#6b7280" }}>No connections match "{dcSearchName}".</p>
-            ) : (
-              <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px", maxHeight: "294px", overflowY: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                    <tr style={{ background: "#f1f5f9" }}>
-                      {["Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT"].map((h) => (
-                        <th key={h} style={thStyle}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((c, i) => {
-                      const sel = dcSelected?.connectionId === c.connectionId;
-                      return (
-                        <tr key={c.connectionId}
-                          onClick={() => { setDcSelected(c); setDcConfirming(false); setDcError(""); setDcSuccess(""); }}
-                          style={{ background: sel ? "#fee2e2" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                          <td style={tdStyle}>{c.customerCode}</td>
-                          <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
-                          <td style={tdStyle}>{c.pincode}</td>
-                          <td style={tdStyle}>{c.planName}</td>
-                          <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
-                          <td style={tdStyle}>{c.oltType}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
-          {!dcConnsLoading && dcSearchName.length < 2 && !dcSelected && (
-            <p style={{ fontSize: "13px", color: "#9ca3af" }}>Type at least 2 characters to search.</p>
-          )}
+          {dcReactivateSuccess && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{dcReactivateSuccess}</p>}
+          {dcError && !dcSelected && <p style={{ fontSize: "13px", color: "#dc2626", marginBottom: "12px" }}>{dcError}</p>}
 
-          {dcSelected && !dcConfirming && (
+          {/* ACTIVE view */}
+          {!dcShowDisconnected && (
             <>
-              <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "4px", padding: "12px 16px", marginBottom: "16px" }}>
-                <p style={{ fontSize: "13px", color: "#9a3412", margin: 0 }}>
-                  Selected: <strong>{dcSelected.fullName}</strong> ({dcSelected.customerCode}) — Plan: <strong>{dcSelected.planName}</strong> @ Rs.{dcSelected.monthlyPrice}
-                </p>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
+                <input
+                  value={dcSearchName}
+                  onChange={(e) => { setDcSearchName(e.target.value); setDcSelected(null); setDcConfirming(false); }}
+                  placeholder="Search by customer code, name, or pincode..."
+                  style={{ ...inputStyle, width: "500px" }}
+                  onFocus={focusBorder} onBlur={blurBorder}
+                />
+                {dcSearchName && <button onClick={() => setDcSearchName("")} style={cancelBtn}>Clear</button>}
               </div>
-              {dcSuccess && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{dcSuccess}</p>}
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => setDcSelected(null)} style={cancelBtn}>Cancel</button>
-                <button
-                  onClick={() => setDcConfirming(true)}
-                  style={{ ...primaryBtn, background: "#dc2626" }}
-                >
-                  Disconnect
-                </button>
-              </div>
+              {!dcConnsLoading && dcSearchName.length >= 2 && (() => {
+                const q = dcSearchName.toLowerCase();
+                const filtered = dcConns.filter((c) =>
+                  c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q)
+                );
+                return filtered.length === 0 ? (
+                  <p style={{ fontSize: "13px", color: "#6b7280" }}>No connections match "{dcSearchName}".</p>
+                ) : (
+                  <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px", maxHeight: "294px", overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                        <tr style={{ background: "#f1f5f9" }}>
+                          {["Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT"].map((h) => (
+                            <th key={h} style={thStyle}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((c, i) => {
+                          const sel = dcSelected?.connectionId === c.connectionId;
+                          return (
+                            <tr key={c.connectionId}
+                              onClick={() => { setDcSelected(c); setDcConfirming(false); setDcError(""); setDcSuccess(""); }}
+                              style={{ background: sel ? "#fee2e2" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
+                              <td style={tdStyle}>{c.customerCode}</td>
+                              <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
+                              <td style={tdStyle}>{c.pincode}</td>
+                              <td style={tdStyle}>{c.planName}</td>
+                              <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
+                              <td style={tdStyle}>{c.oltType}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+              {!dcConnsLoading && dcSearchName.length < 2 && !dcSelected && (
+                <p style={{ fontSize: "13px", color: "#9ca3af" }}>Type at least 2 characters to search.</p>
+              )}
+
+              {dcSelected && !dcConfirming && (
+                <>
+                  <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "4px", padding: "12px 16px", marginBottom: "16px" }}>
+                    <p style={{ fontSize: "13px", color: "#9a3412", margin: 0 }}>
+                      Selected: <strong>{dcSelected.fullName}</strong> ({dcSelected.customerCode}) — Plan: <strong>{dcSelected.planName}</strong> @ Rs.{dcSelected.monthlyPrice}
+                    </p>
+                  </div>
+                  {dcSuccess && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{dcSuccess}</p>}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={() => setDcSelected(null)} style={cancelBtn}>Cancel</button>
+                    <button onClick={() => setDcConfirming(true)} style={{ ...primaryBtn, background: "#dc2626" }}>Disconnect</button>
+                  </div>
+                </>
+              )}
+
+              {dcSelected && dcConfirming && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "4px", padding: "16px 20px", maxWidth: "480px" }}>
+                  <p style={{ fontSize: "14px", fontWeight: 600, color: "#991b1b", margin: "0 0 6px 0" }}>Confirm Disconnection</p>
+                  <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Connection ID : <strong>{dcSelected.connectionId}</strong></p>
+                  <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Customer : <strong>{dcSelected.fullName}</strong> ({dcSelected.customerCode})</p>
+                  <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Service Area : <strong>{dcSelected.pincode}</strong></p>
+                  <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 16px 0" }}>Port : <strong>{dcSelected.oltCode}/Spl{dcSelected.splitterNumber}/Port{dcSelected.portNumber}</strong></p>
+                  <p style={{ fontSize: "13px", color: "#dc2626", margin: "0 0 16px 0" }}>This will terminate the connection and release the port. This action cannot be undone.</p>
+                  {dcError && <p style={{ fontSize: "13px", color: "#dc2626", margin: "0 0 12px 0" }}>{dcError}</p>}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={() => setDcConfirming(false)} style={cancelBtn} disabled={dcLoading}>Cancel</button>
+                    <button onClick={handleDisconnect} disabled={dcLoading} style={{ ...primaryBtn, background: "#dc2626" }}>
+                      {dcLoading ? "Disconnecting..." : "Yes, Disconnect"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!dcSelected && dcSuccess && (
+                <p style={{ fontSize: "13px", color: "#16a34a" }}>{dcSuccess}</p>
+              )}
             </>
           )}
 
-          {dcSelected && dcConfirming && (
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "4px", padding: "16px 20px", maxWidth: "480px" }}>
-              <p style={{ fontSize: "14px", fontWeight: 600, color: "#991b1b", margin: "0 0 6px 0" }}>Confirm Disconnection</p>
-              <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Connection ID : <strong>{dcSelected.connectionId}</strong></p>
-              <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Customer : <strong>{dcSelected.fullName}</strong> ({dcSelected.customerCode})</p>
-              <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 4px 0" }}>Service Area : <strong>{dcSelected.pincode}</strong></p>
-              <p style={{ fontSize: "13px", color: "#374151", margin: "0 0 16px 0" }}>Port : <strong>{dcSelected.oltCode}/Spl{dcSelected.splitterNumber}/Port{dcSelected.portNumber}</strong></p>
-              <p style={{ fontSize: "13px", color: "#dc2626", margin: "0 0 16px 0" }}>This will terminate the connection and release the port. This action cannot be undone.</p>
-              {dcError && <p style={{ fontSize: "13px", color: "#dc2626", margin: "0 0 12px 0" }}>{dcError}</p>}
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => setDcConfirming(false)} style={cancelBtn} disabled={dcLoading}>Cancel</button>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={dcLoading}
-                  style={{ ...primaryBtn, background: "#dc2626" }}
-                >
-                  {dcLoading ? "Disconnecting..." : "Yes, Disconnect"}
-                </button>
+          {/* DISCONNECTED view */}
+          {dcShowDisconnected && (
+            <>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
+                <input
+                  value={dcSearchName}
+                  onChange={(e) => setDcSearchName(e.target.value)}
+                  placeholder="Search by customer code, name, or pincode..."
+                  style={{ ...inputStyle, width: "500px" }}
+                  onFocus={focusBorder} onBlur={blurBorder}
+                />
+                {dcSearchName && <button onClick={() => setDcSearchName("")} style={cancelBtn}>Clear</button>}
               </div>
-            </div>
-          )}
-
-          {!dcSelected && dcSuccess && (
-            <p style={{ fontSize: "13px", color: "#16a34a" }}>{dcSuccess}</p>
+              {!dcConnsLoading && (() => {
+                const q = dcSearchName.toLowerCase();
+                const list = dcSearchName.length >= 2
+                  ? dcDisconnectedConns.filter(c => c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q))
+                  : dcDisconnectedConns;
+                if (dcSearchName.length >= 2 && list.length === 0)
+                  return <p style={{ fontSize: "13px", color: "#6b7280" }}>No disconnected connections match "{dcSearchName}".</p>;
+                if (list.length === 0)
+                  return <p style={{ fontSize: "13px", color: "#9ca3af" }}>No disconnected connections found.</p>;
+                return (
+                  <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", maxHeight: "400px", overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                        <tr style={{ background: "#f1f5f9" }}>
+                          {["Cust Code", "Customer", "Pincode", "Last Plan", "Price", "OLT", "Disconnected On", "Action"].map(h => (
+                            <th key={h} style={thStyle}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map((c, i) => (
+                          <tr key={c.connectionId} style={{ background: i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb" }}>
+                            <td style={tdStyle}>{c.customerCode}</td>
+                            <td style={{ ...tdStyle, fontWeight: 500 }}>{c.fullName}</td>
+                            <td style={tdStyle}>{c.pincode}</td>
+                            <td style={tdStyle}>{c.planName}</td>
+                            <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
+                            <td style={tdStyle}>{c.oltType}</td>
+                            <td style={{ ...tdStyle, color: "#6b7280" }}>{(c as any).disconnectedOn || "-"}</td>
+                            <td style={tdStyle}>
+                              <button
+                                onClick={() => handleReactivate(c)}
+                                disabled={dcReactivating}
+                                style={{ fontSize: "13px", color: "#16a34a", background: "none", border: "none", cursor: dcReactivating ? "not-allowed" : "pointer", padding: 0, fontWeight: 500 }}
+                              >{dcReactivating ? "..." : "Reactivate"}</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </>
           )}
         </div>
       )}
