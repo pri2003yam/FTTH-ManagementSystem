@@ -51,11 +51,12 @@ public class CustomerApiController {
     public ResponseEntity<List<Map<String, Object>>> listCustomers() {
         String sql =
             "SELECT c.customer_id, c.customer_code, c.full_name, c.email, c.status, " +
-            "sa.pincode " +
+            "sa.pincode, p.plan_name " +
             "FROM customers c " +
-            "LEFT JOIN customer_connections cc ON cc.customer_id = c.customer_id AND cc.connection_status = 'ACTIVE' " +
+            "LEFT JOIN customer_connections cc ON cc.customer_id = c.customer_id " +
+            "  AND cc.connection_id = (SELECT MAX(cc2.connection_id) FROM customer_connections cc2 WHERE cc2.customer_id = c.customer_id) " +
             "LEFT JOIN service_areas sa ON sa.service_area_id = cc.service_area_id " +
-            "GROUP BY c.customer_id, c.customer_code, c.full_name, c.email, c.status, sa.pincode " +
+            "LEFT JOIN plans p ON p.plan_id = cc.plan_id " +
             "ORDER BY c.customer_id";
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -71,6 +72,7 @@ public class CustomerApiController {
                 row.put("email", rs.getString("email"));
                 row.put("status", rs.getString("status"));
                 row.put("pincode", rs.getString("pincode"));
+                row.put("planName", rs.getString("plan_name"));
                 result.add(row);
             }
         } catch (Exception e) {
