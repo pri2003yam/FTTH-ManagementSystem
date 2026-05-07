@@ -145,14 +145,22 @@ public class DashboardApiController {
             // Recent activity
             List<Map<String, Object>> recentActivity = new ArrayList<>();
             try (PreparedStatement ps = con.prepareStatement(
-                    "SELECT cc.connection_id AS id, " +
-                    "CASE WHEN cc.connection_status = 'ACTIVE' THEN 'New Connection' ELSE 'Disconnect' END AS type, " +
+                    "SELECT el.log_id AS id, " +
+                    "CASE el.email_type " +
+                    "  WHEN 'ORDER_CONFIRMATION' THEN 'New Connection' " +
+                    "  WHEN 'PLAN_CHANGE' THEN 'Plan Change' " +
+                    "  WHEN 'SERVICE_MOVE' THEN 'Service Move' " +
+                    "  WHEN 'DISCONNECT' THEN 'Disconnect' " +
+                    "  ELSE el.email_type END AS type, " +
                     "CONCAT(c.full_name, ' - ', p.plan_name) AS description, " +
-                    "cc.updated_at AS timestamp " +
-                    "FROM customer_connections cc " +
-                    "JOIN customers c ON c.customer_id = cc.customer_id " +
+                    "el.created_at AS timestamp " +
+                    "FROM email_logs el " +
+                    "JOIN customers c ON c.customer_id = el.customer_id " +
+                    "JOIN customer_connections cc ON cc.customer_id = el.customer_id " +
                     "JOIN plans p ON p.plan_id = cc.plan_id " +
-                    "ORDER BY cc.updated_at DESC LIMIT 5");
+                    "WHERE el.email_type IN ('ORDER_CONFIRMATION','PLAN_CHANGE','SERVICE_MOVE','DISCONNECT') " +
+                    "AND cc.connection_id = (SELECT MAX(cc2.connection_id) FROM customer_connections cc2 WHERE cc2.customer_id = el.customer_id) " +
+                    "ORDER BY el.created_at DESC LIMIT 10");
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> activity = new LinkedHashMap<>();

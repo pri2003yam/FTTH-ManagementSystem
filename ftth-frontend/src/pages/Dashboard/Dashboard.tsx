@@ -123,7 +123,7 @@ export default function Dashboard() {
       <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 8px 0" }}>Welcome back, {user}.</p>
       {role === "ADMIN" && <AdminDashboard navigate={navigate} />}
       {role === "CSR" && <CsrDashboard navigate={navigate} />}
-      {role === "MAINT" && <MaintDashboard navigate={navigate} />}
+      {role === "MAINT" && <MaintDashboard />}
     </div>
   );
 }
@@ -228,7 +228,7 @@ function AdminDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
         <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/plans")}>Add Plan</button>
         <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/users")}>Add User</button>
         <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/inventory")}>Manage Inventory</button>
-        <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/connections")}>New Connection</button>
+        <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/connections", { state: { view: "new-install" } })}>New Connection</button>
         <button style={{ ...actionBtn, flex: 1, background: "#7c3aed" }} onClick={() => navigate("/maintenance")}>Maintenance</button>
       </div>
     </>
@@ -241,7 +241,6 @@ function AdminDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
 function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const [stats, setStats] = useState<CsrStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [searchCode, setSearchCode] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -268,18 +267,7 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
         </div>
       )}
 
-      <p style={sectionTitle}>🔍 Quick Customer Lookup</p>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <input
-          type="text"
-          placeholder="Enter customer code..."
-          value={searchCode}
-          onChange={(e) => setSearchCode(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && searchCode.trim()) navigate(`/customers?search=${searchCode.trim()}`); }}
-          style={{ border: "1px solid #d1d5db", borderRadius: "6px", padding: "8px 12px", fontSize: "13px", width: "240px" }}
-        />
-        <button style={{ ...actionBtn, background: "#4b5563" }} onClick={() => { if (searchCode.trim()) navigate(`/customers?search=${searchCode.trim()}`); }}>Search</button>
-      </div>
+
 
       {recentActivity.length > 0 && (
         <>
@@ -294,13 +282,7 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
         </>
       )}
 
-      <p style={sectionTitle}>📌 Quick Actions</p>
-      <div style={actionGrid}>
-        <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/customers")}>Add Customer</button>
-        <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/connections")}>New Connection</button>
-        <button style={{ ...actionBtn, flex: 1, background: "#7c3aed" }} onClick={() => navigate("/connections")}>Change Plan</button>
-        <button style={{ ...actionBtn, flex: 1, background: "#dc2626" }} onClick={() => navigate("/connections")}>Disconnect</button>
-      </div>
+
     </>
   );
 }
@@ -308,7 +290,7 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
 // ══════════════════════════════════════════════
 // MAINTENANCE DASHBOARD
 // ══════════════════════════════════════════════
-function MaintDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+function MaintDashboard() {
   const [stats, setStats] = useState<MaintStats | null>(null);
   const [issues, setIssues] = useState<MaintIssue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,13 +334,7 @@ function MaintDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
         </>
       )}
 
-      <p style={sectionTitle}>⚡ Quick Actions</p>
-      <div style={actionGrid}>
-        <button style={{ ...actionBtn, flex: 1 }} onClick={() => navigate("/maintenance")}>View All Tasks</button>
-        <button style={{ ...actionBtn, flex: 1, background: "#059669" }} onClick={() => navigate("/maintenance")}>Mark Resolved</button>
-        <button style={{ ...actionBtn, flex: 1, background: "#4b5563" }} onClick={() => navigate("/capacity")}>Check Capacity</button>
-        <button style={{ ...actionBtn, flex: 1, background: "#7c3aed" }} onClick={() => navigate("/inventory")}>Inventory Status</button>
-      </div>
+
     </>
   );
 }

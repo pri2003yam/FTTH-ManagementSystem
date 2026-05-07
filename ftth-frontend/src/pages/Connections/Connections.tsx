@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
 import {
@@ -50,13 +51,17 @@ const sectionLabel: React.CSSProperties = {
 };
 
 export default function Connections() {
-  const [view, setView] = useState<View>("menu");
+  const location = useLocation();
+  const [view, setView] = useState<View>((location.state as any)?.view ?? "menu");
 
   // ── New Install state ──
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [niPincodeInput, setNiPincodeInput] = useState("");
+  const [niPincodeSuggestions, setNiPincodeSuggestions] = useState<string[]>([]);
+  const [niPincodeDropdownOpen, setNiPincodeDropdownOpen] = useState(false);
+  const [niPlanSearch, setNiPlanSearch] = useState("");
   const [niForm, setNiForm] = useState({ customerName: "", email: "", salary: "", pincode: "" });
   const [niLoading, setNiLoading] = useState(false);
   const [niDataLoading, setNiDataLoading] = useState(false);
@@ -83,6 +88,8 @@ export default function Connections() {
   // ── Move state ──
   const [moveConn, setMoveConn] = useState<ActiveConnection | null>(null);
   const [movePincode, setMovePincode] = useState("");
+  const [movePincodeSuggestions, setMovePincodeSuggestions] = useState<string[]>([]);
+  const [movePincodeDropdownOpen, setMovePincodeDropdownOpen] = useState(false);
   const [moveSearch, setMoveSearch] = useState("");
   const [moveCheck, setMoveCheck] = useState<{ available: boolean; oltType: string; availablePorts: number; message: string } | null>(null);
   const [moveCheckLoading, setMoveCheckLoading] = useState(false);
@@ -176,6 +183,9 @@ export default function Connections() {
     setNiForm({ customerName: "", email: "", salary: "", pincode: "" });
     setSelectedPlanId(null);
     setNiPincodeInput("");
+    setNiPincodeSuggestions([]);
+    setNiPincodeDropdownOpen(false);
+    setNiPlanSearch("");
     setNiError("");
     setNiOltTypes([]);
     setNiCreatedConn(null);
@@ -336,6 +346,8 @@ export default function Connections() {
     setSelectedConn(null);
     setMoveConn(null);
     setMovePincode("");
+    setMovePincodeSuggestions([]);
+    setMovePincodeDropdownOpen(false);
     setMoveCheck(null);
     setMoveError("");
     setMoveSuccess("");
@@ -407,23 +419,59 @@ export default function Connections() {
                       required placeholder="Minimum Rs. 30,000" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
                   </Field>
                   <Field label="Pincode">
-                    <input
-                      value={niPincodeInput}
-                      onChange={(e) => { 
-                        const val = e.target.value;
-                        setNiPincodeInput(val); 
-                        setNiForm({ ...niForm, pincode: "" }); 
-                        setNiOltTypes([]); 
-                        setSelectedPlanId(null);
-                        if (pincodes.includes(val)) handlePincodeSelect(val);
-                      }}
-                      placeholder="Enter pincode"
-                      list="ni-pincode-list"
-                      style={inputStyle} onFocus={focusBorder} onBlur={(e) => { blurBorder(e); if (pincodes.includes(niPincodeInput)) handlePincodeSelect(niPincodeInput); }}
-                    />
-                    <datalist id="ni-pincode-list">
-                      {pincodes.map((p) => <option key={p} value={p} />)}
-                    </datalist>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        value={niPincodeInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setNiPincodeInput(val);
+                          setNiForm({ ...niForm, pincode: "" });
+                          setNiOltTypes([]);
+                          setSelectedPlanId(null);
+                          if (val.length >= 4) {
+                            const matches = pincodes.filter(p => p.startsWith(val)).slice(0, 8);
+                            setNiPincodeSuggestions(matches);
+                            setNiPincodeDropdownOpen(matches.length > 0);
+                          } else {
+                            setNiPincodeSuggestions([]);
+                            setNiPincodeDropdownOpen(false);
+                          }
+                          if (pincodes.includes(val)) handlePincodeSelect(val);
+                        }}
+                        onBlur={() => setTimeout(() => setNiPincodeDropdownOpen(false), 150)}
+                        placeholder="Enter pincode"
+                        maxLength={6}
+                        style={inputStyle}
+                        onFocus={focusBorder}
+                        autoComplete="off"
+                      />
+                      {niPincodeDropdownOpen && (
+                        <div style={{
+                          position: "absolute", top: "100%", left: 0, right: 0,
+                          background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100,
+                          maxHeight: "180px", overflowY: "auto", marginTop: "2px",
+                        }}>
+                          {niPincodeSuggestions.map((p) => (
+                            <div
+                              key={p}
+                              onMouseDown={() => {
+                                setNiPincodeDropdownOpen(false);
+                                handlePincodeSelect(p);
+                              }}
+                              style={{
+                                padding: "8px 12px", fontSize: "13px", cursor: "pointer",
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+                            >
+                              {p}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Field>
                   {niOltLoading && <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>Checking OLT types...</p>}
                   {niOltTypes.length > 0 && (
@@ -438,28 +486,27 @@ export default function Connections() {
                   {niForm.pincode && niOltTypes.length === 0 && !niOltLoading && (
                     <p style={{ fontSize: "12px", color: "#dc2626", margin: 0 }}>No ports available in this pincode.</p>
                   )}
-                  {niOltTypes.length > 0 && !plans.find(p => p.planId === selectedPlanId) && (
-                    <p style={{ fontSize: "12px", color: "#f59e0b", margin: 0 }}>Select a plan from the table below.</p>
-                  )}
-                  {plans.find(p => p.planId === selectedPlanId) && (
-                    <p style={{ fontSize: "13px", color: "#16a34a", margin: 0, fontWeight: 500 }}>
-                      ✓ Plan: {plans.find(p => p.planId === selectedPlanId)!.planName} — Rs.{plans.find(p => p.planId === selectedPlanId)!.monthlyPrice}
-                    </p>
-                  )}
-                  {niError && <p style={errText}>{niError}</p>}
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
-                    <button type="button" onClick={resetNi} style={cancelBtn}>Clear</button>
-                    <button type="submit" disabled={niLoading || !selectedPlanId} style={{ ...primaryBtn, opacity: !selectedPlanId ? 0.5 : 1 }}>
-                      {niLoading ? "Creating..." : "Create Connection"}
-                    </button>
-                  </div>
                 </form>
               </div>
 
               {/* BOTTOM ─ Plans shown only after pincode selected */}
               {niForm.pincode && niOltTypes.length > 0 && (
                 <>
-                  <p style={sectionLabel}>PLANS FOR PINCODE {niForm.pincode} — click a row to select</p>
+                  <p style={sectionLabel}>SELECT A PLAN FOR PINCODE {niForm.pincode}</p>
+                  
+                  {/* Search bar */}
+                  <div style={{ marginBottom: "12px" }}>
+                    <input
+                      type="text"
+                      placeholder="Search plans by name, speed, or price..."
+                      value={niPlanSearch}
+                      onChange={(e) => setNiPlanSearch(e.target.value)}
+                      style={{ ...inputStyle, width: "400px" }}
+                      onFocus={focusBorder}
+                      onBlur={blurBorder}
+                    />
+                  </div>
+
                   <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden" }}>
                     <div style={{ maxHeight: "300px", overflowY: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -471,24 +518,72 @@ export default function Connections() {
                           </tr>
                         </thead>
                         <tbody>
-                          {plans.filter(p => niOltTypes.includes(p.oltType)).map((p, i) => {
-                            const sel = selectedPlanId === p.planId;
-                            return (
-                              <tr key={p.planId} onClick={() => setSelectedPlanId(p.planId)}
-                                style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                                <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{p.planName}</td>
-                                <td style={tdStyle}>{p.speedLabel}</td>
-                                <td style={tdStyle}>{p.dataLimitLabel}</td>
-                                <td style={tdStyle}>{p.ottCount}</td>
-                                <td style={tdStyle}>{p.oltType}</td>
-                                <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {p.monthlyPrice}</td>
-                              </tr>
-                            );
-                          })}
+                          {(() => {
+                            const feasiblePlans = plans.filter(p => niOltTypes.includes(p.oltType));
+                            const searchQuery = niPlanSearch.toLowerCase();
+                            const filteredPlans = searchQuery
+                              ? feasiblePlans.filter(p =>
+                                  p.planName.toLowerCase().includes(searchQuery) ||
+                                  p.speedLabel.toLowerCase().includes(searchQuery) ||
+                                  p.monthlyPrice.toString().includes(searchQuery)
+                                )
+                              : feasiblePlans.slice(0, 5); // Show top 5 by default
+
+                            if (filteredPlans.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "#6b7280" }}>
+                                    {searchQuery ? `No plans match "${niPlanSearch}"` : "No plans available"}
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            return filteredPlans.map((p, i) => {
+                              const sel = selectedPlanId === p.planId;
+                              return (
+                                <tr key={p.planId} onClick={() => setSelectedPlanId(p.planId)}
+                                  style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
+                                  <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{p.planName}</td>
+                                  <td style={tdStyle}>{p.speedLabel}</td>
+                                  <td style={tdStyle}>{p.dataLimitLabel}</td>
+                                  <td style={tdStyle}>{p.ottCount}</td>
+                                  <td style={tdStyle}>{p.oltType}</td>
+                                  <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {p.monthlyPrice}</td>
+                                </tr>
+                              );
+                            });
+                          })()}
                         </tbody>
                       </table>
                     </div>
                   </div>
+
+                  {!niPlanSearch && plans.filter(p => niOltTypes.includes(p.oltType)).length > 5 && (
+                    <p style={{ fontSize: "12px", color: "#6b7280", marginTop: "8px" }}>
+                      Showing top 5 plans. Use search to find more.
+                    </p>
+                  )}
+
+                  {/* Selected plan info + action buttons */}
+                  {selectedPlanId && (
+                    <div style={{ marginTop: "16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px", padding: "12px 16px" }}>
+                      <p style={{ fontSize: "13px", color: "#166534", margin: "0 0 12px 0", fontWeight: 500 }}>
+                        ✓ Selected Plan: {plans.find(p => p.planId === selectedPlanId)!.planName} — Rs.{plans.find(p => p.planId === selectedPlanId)!.monthlyPrice}/mo
+                      </p>
+                      {niError && <p style={{ ...errText, marginBottom: "12px" }}>{niError}</p>}
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button type="button" onClick={resetNi} style={cancelBtn}>Clear</button>
+                        <button
+                          onClick={handleNewInstall}
+                          disabled={niLoading || !selectedPlanId}
+                          style={{ ...primaryBtn, opacity: !selectedPlanId ? 0.5 : 1 }}
+                        >
+                          {niLoading ? "Creating..." : "Create Connection"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -769,20 +864,56 @@ export default function Connections() {
               <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", padding: "24px", maxWidth: "480px", marginBottom: "16px" }}>
                 <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
                   <Field label="New Pincode">
-                    <input
-                      value={movePincode}
-                      onChange={(e) => { setMovePincode(e.target.value); setMoveCheck(null); }}
-                      placeholder="Enter pincode"
-                      list="move-pincode-list"
-                      style={inputStyle}
-                      onFocus={focusBorder}
-                      onBlur={blurBorder}
-                    />
-                    <datalist id="move-pincode-list">
-                      {pincodes.filter((p) => p !== moveConn.pincode).map((p) => (
-                        <option key={p} value={p} />
-                      ))}
-                    </datalist>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        value={movePincode}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setMovePincode(val);
+                          setMoveCheck(null);
+                          if (val.length >= 4) {
+                            const matches = pincodes.filter(p => p !== moveConn.pincode && p.startsWith(val)).slice(0, 8);
+                            setMovePincodeSuggestions(matches);
+                            setMovePincodeDropdownOpen(matches.length > 0);
+                          } else {
+                            setMovePincodeSuggestions([]);
+                            setMovePincodeDropdownOpen(false);
+                          }
+                        }}
+                        onBlur={() => setTimeout(() => setMovePincodeDropdownOpen(false), 150)}
+                        placeholder="Enter pincode"
+                        maxLength={6}
+                        style={inputStyle}
+                        onFocus={focusBorder}
+                        autoComplete="off"
+                      />
+                      {movePincodeDropdownOpen && (
+                        <div style={{
+                          position: "absolute", top: "100%", left: 0, right: 0,
+                          background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100,
+                          maxHeight: "180px", overflowY: "auto", marginTop: "2px",
+                        }}>
+                          {movePincodeSuggestions.map((p) => (
+                            <div
+                              key={p}
+                              onMouseDown={() => {
+                                setMovePincode(p);
+                                setMovePincodeDropdownOpen(false);
+                              }}
+                              style={{
+                                padding: "8px 12px", fontSize: "13px", cursor: "pointer",
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "#f0f9ff")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+                            >
+                              {p}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Field>
                   <button
                     onClick={handleCheckMove}
