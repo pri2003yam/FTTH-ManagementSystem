@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { inventoryService } from "../../services/inventoryService";
-import type { OltInventoryDTO } from "../../types/models";
+import type { OltInventoryDTO, InventoryConfig } from "../../types/models";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Table from "../../components/ui/Table";
@@ -18,9 +18,11 @@ export default function AddSplitterForm({ onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [maxSplitters, setMaxSplitters] = useState(3);
 
   useEffect(() => {
     inventoryService.getPincodes().then(setPincodes).catch(() => {});
+    inventoryService.getConfig().then((c) => setMaxSplitters(c.maxSplitters)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -51,11 +53,20 @@ export default function AddSplitterForm({ onSuccess }: Props) {
     {
       key: "action",
       header: "",
-      render: (r: OltInventoryDTO) => (
-        <Button className="text-xs px-2 py-1" onClick={() => handleAdd(r.oltCode)}>
-          + Splitter
-        </Button>
-      ),
+      render: (r: OltInventoryDTO) => {
+        const atMax = r.splitterCount >= maxSplitters;
+        return (
+          <Button
+            className="text-xs px-2 py-1"
+            onClick={() => handleAdd(r.oltCode)}
+            disabled={atMax}
+            style={atMax ? { opacity: 0.4, cursor: "not-allowed" } : {}}
+            title={atMax ? `Max splitters (${maxSplitters}) reached` : "Add splitter"}
+          >
+            + Splitter
+          </Button>
+        );
+      },
     },
   ];
 
