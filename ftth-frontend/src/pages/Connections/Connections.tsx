@@ -421,7 +421,7 @@ export default function Connections() {
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>New Install</h2>
-            <button onClick={goBack} style={cancelBtn}>â† Back</button>
+            <button onClick={goBack} style={cancelBtn}>← Back</button>
           </div>
 
           {niDataLoading ? (
@@ -651,7 +651,7 @@ export default function Connections() {
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Change Plan</h2>
-            <button onClick={goBack} style={cancelBtn}>â† Back</button>
+            <button onClick={goBack} style={cancelBtn}>← Back</button>
           </div>
 
           {/* Search bar â€” Change Plan */}
@@ -818,7 +818,7 @@ export default function Connections() {
         <div style={{ marginTop: "32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: 0 }}>Move Customer</h2>
-            <button onClick={goBack} style={cancelBtn}>â† Back</button>
+            <button onClick={goBack} style={cancelBtn}>← Back</button>
           </div>
 
           {/* Search */}
