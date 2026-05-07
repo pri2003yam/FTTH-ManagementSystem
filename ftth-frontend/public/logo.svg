@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="30" fill="#2563EB"></circle>
+
+  <!-- Telecom waves -->
+  <path d="M18 30 Q32 18 46 30" stroke="#38BDF8" stroke-width="3" fill="none"></path>
+  <path d="M20 36 Q32 26 44 36" stroke="#38BDF8" stroke-width="2.5" fill="none"></path>
+
+  <!-- Center dot (network hub) -->
+  <circle cx="32" cy="40" r="3" fill="white"></circle>
+
+  <!-- Aaha Text (inside icon) -->
+  <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-size="14" font-weight="bold" fill="white" font-family="Arial">
+    Aaha
+  </text>
+
+</svg>
