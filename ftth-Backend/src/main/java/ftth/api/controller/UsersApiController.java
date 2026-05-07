@@ -4,6 +4,8 @@ import ftth.repository.RoleRepository;
 import ftth.repository.UserRepository;
 import ftth.service.UserManagerService;
 
+import ftth.util.PasswordUtil;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +46,7 @@ public class UsersApiController {
         String password = body.get("password");
         String role = body.get("role");
 
-        boolean ok = userManagerService.addUser(username, password, role);
+        boolean ok = userManagerService.addUser(username, PasswordUtil.hash(password), role);
         Map<String, String> res = new HashMap<>();
         if (ok) {
             res.put("message", "User created successfully");
@@ -73,7 +75,7 @@ public class UsersApiController {
         }
 
         if (newPassword != null && !newPassword.isBlank()) {
-            boolean ok = userManagerService.changePassword(username, newPassword);
+            boolean ok = userManagerService.changePassword(username, PasswordUtil.hash(newPassword));
             if (!ok) {
                 res.put("message", "Failed to update password.");
                 return ResponseEntity.badRequest().body(res);

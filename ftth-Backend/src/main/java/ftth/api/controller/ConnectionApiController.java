@@ -47,14 +47,47 @@ public class ConnectionApiController {
 
     // ── New Install ──────────────────────────────────────────────
     @PostMapping("/new-install")
-    public ResponseEntity<Map<String, String>> newInstall(
+    public ResponseEntity<Map<String, Object>> newInstall(
             @RequestBody AddConnectionRequest req,
             @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
 
-        Map<String, String> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         try {
-            customerConnectionService.createConnection(req, userId);
+            CustomerConnection conn = customerConnectionService.createConnection(req, userId);
             result.put("message", "Connection created successfully.");
+            if (conn != null) {
+                // fetch port/splitter/olt details
+                String sql =
+                    "SELECT cc.connection_id, c.customer_code, c.full_name, sa.pincode, " +
+                    "p.plan_name, p.monthly_price, o.olt_type, o.olt_code, " +
+                    "s.splitter_number, pt.port_number " +
+                    "FROM customer_connections cc " +
+                    "JOIN customers c ON c.customer_id = cc.customer_id " +
+                    "JOIN plans p ON p.plan_id = cc.plan_id " +
+                    "JOIN ports pt ON pt.port_id = cc.port_id " +
+                    "JOIN splitters s ON s.splitter_id = pt.splitter_id " +
+                    "JOIN olts o ON o.olt_id = s.olt_id " +
+                    "JOIN service_areas sa ON sa.service_area_id = cc.service_area_id " +
+                    "WHERE cc.connection_id = ?";
+                try (java.sql.Connection con = ftth.config.DbConnection.getConnection();
+                     java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
+                    ps.setLong(1, conn.getConnectionId());
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            result.put("connectionId",   rs.getLong("connection_id"));
+                            result.put("customerCode",   rs.getString("customer_code"));
+                            result.put("fullName",       rs.getString("full_name"));
+                            result.put("pincode",        rs.getString("pincode"));
+                            result.put("planName",       rs.getString("plan_name"));
+                            result.put("monthlyPrice",   rs.getDouble("monthly_price"));
+                            result.put("oltType",        rs.getString("olt_type"));
+                            result.put("oltCode",        rs.getString("olt_code"));
+                            result.put("splitterNumber", rs.getInt("splitter_number"));
+                            result.put("portNumber",     rs.getInt("port_number"));
+                        }
+                    }
+                }
+            }
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             result.put("message", e.getMessage() != null ? e.getMessage() : "Failed to create connection.");
