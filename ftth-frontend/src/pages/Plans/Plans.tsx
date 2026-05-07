@@ -74,7 +74,7 @@ export default function PlanAdmin() {
     setForm({
       ...p,
       speedLabel: p.speedLabel.replace(/MBPS$/i, "").trim(),
-      dataLimitLabel: p.dataLimitLabel.toLowerCase() === "unlimited internet" ? "unlimited" : p.dataLimitLabel.replace(/GB$/i, "").trim(),
+      dataLimitLabel: p.dataLimitLabel.toLowerCase() === "unlimited internet" ? "unlimited" : p.dataLimitLabel.replace(/GB\/Month$/i, "").replace(/GB$/i, "").trim(),
     });
     setShowForm(true);
   };
@@ -103,7 +103,7 @@ export default function PlanAdmin() {
     const payload = {
       ...form,
       speedLabel: rawSpeed + "MBPS",
-      dataLimitLabel: isUnlimited ? "Unlimited Internet" : rawData + "GB",
+      dataLimitLabel: isUnlimited ? "Unlimited Internet" : rawData + "GB/Month",
     };
 
     if (editPlan) {
