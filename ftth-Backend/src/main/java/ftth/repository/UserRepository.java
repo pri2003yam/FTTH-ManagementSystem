@@ -42,10 +42,9 @@ public List<String[]> findAllUsers() {
 
     List<String[]> users = new ArrayList<>();
 
-    String sql = "SELECT u.username, u.password_hash, r.role_code " +
+    String sql = "SELECT u.username, u.password_hash, r.role_code, u.is_active " +
                  "FROM users u " +
-                 "JOIN roles r ON u.role_id = r.role_id " +
-                 "WHERE u.is_active = TRUE";
+                 "JOIN roles r ON u.role_id = r.role_id";
 
     try (Connection con = DbConnection.getConnection();
          PreparedStatement ps = con.prepareStatement(sql);
@@ -56,7 +55,8 @@ public List<String[]> findAllUsers() {
             String password = rs.getString("password_hash");
             String role = rs.getString("role_code");
 
-            users.add(new String[]{username, password, role});
+            String active = rs.getBoolean("is_active") ? "Active" : "Inactive";
+            users.add(new String[]{username, password, role, active});
         }
 
     } catch (Exception e) {
@@ -152,6 +152,22 @@ public boolean updateUserRole(String username, long roleId) {
         ps.setLong(1, roleId);
         ps.setString(2, username);
 
+        return ps.executeUpdate() > 0;
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    return false;
+}
+public boolean toggleActive(String username) {
+
+    String sql = "UPDATE users SET is_active = NOT is_active WHERE username = ?";
+
+    try (Connection con = DbConnection.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+
+        ps.setString(1, username);
         return ps.executeUpdate() > 0;
 
     } catch (Exception e) {

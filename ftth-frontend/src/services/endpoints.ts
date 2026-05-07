@@ -54,6 +54,7 @@ export const ENDPOINTS = {
   // Users
   USERS: "/api/users",
   USER_BY_USERNAME: (username: string) => `/api/users/${username}`,
+  USER_TOGGLE_STATUS: (username: string) => `/api/users/${username}/toggle-status`,
 
   // Maintenance
   MAINTENANCE_INVENTORY: "/api/maintenance/inventory",

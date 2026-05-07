@@ -40,6 +40,15 @@ export default function Users() {
     }
   };
 
+  const handleToggle = async (username: string) => {
+    try {
+      await api.patch(ENDPOINTS.USER_TOGGLE_STATUS(username));
+      fetchUsers();
+    } catch {
+      setError("Failed to toggle user status.");
+    }
+  };
+
   useEffect(() => { fetchUsers(); }, []);
 
   if (loading) return <Loader />;
@@ -64,7 +73,7 @@ export default function Users() {
             {
               key: "status",
               header: "Status",
-              render: (r) => <Badge label={r.status} variant="success" />,
+              render: (r) => <Badge label={r.status} variant={r.status === "Active" ? "success" : "error"} />,
             },
             {
               key: "actions",
@@ -77,6 +86,12 @@ export default function Users() {
                       onClick={() => setEditTarget(r)}
                     >
                       Edit
+                    </button>
+                    <button
+                      style={{ fontSize: "13px", color: "#f59e0b", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      onClick={() => handleToggle(r.username)}
+                    >
+                      {r.status === "Active" ? "Disable" : "Enable"}
                     </button>
                     <button
                       style={{ fontSize: "13px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}
