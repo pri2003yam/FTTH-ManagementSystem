@@ -47,6 +47,7 @@ export const ENDPOINTS = {
   DASHBOARD_ADMIN: "/api/dashboard/admin",
   DASHBOARD_CSR: "/api/dashboard/csr",
   DASHBOARD_MAINT: "/api/dashboard/maint",
+  DASHBOARD_CONNECTIONS_CHART: "/api/dashboard/connections-chart",
 
   // Users
   USERS: "/api/users",

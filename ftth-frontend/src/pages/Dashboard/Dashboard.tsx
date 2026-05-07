@@ -1,32 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
-import type { Role } from "../../types/roles";
 
 // ── Types ──
-interface AdminStats {
-  totalCustomers: number;
-  activeConnections: number;
-  availablePorts: number;
-  totalRevenue: number;
-  newConnectionsThisWeek: number;
-  disconnectsThisWeek: number;
-}
-
-interface CapacityAlert {
-  oltCode: string;
-  usagePercent: number;
-  totalPorts: number;
-  usedPorts: number;
-}
-
 interface CsrStats {
   totalCustomers: number;
   newCustomersToday: number;
   pendingRequests: number;
-  activeConnections: number;
 }
 
 interface RecentActivity {
@@ -36,17 +18,9 @@ interface RecentActivity {
   timestamp: string;
 }
 
-interface PlanInsight {
-  planName: string;
-  activeCount: number;
-  monthlyPrice: number;
-}
-
 interface MaintStats {
-  activeIssues: number;
   pendingTasks: number;
   resolvedToday: number;
-  downConnections: number;
 }
 
 interface MaintIssue {
@@ -55,6 +29,14 @@ interface MaintIssue {
   description: string;
   severity: "HIGH" | "MEDIUM" | "LOW";
   status: string;
+}
+
+interface ConnectionsChart {
+  newConnections: number;
+  changePlan: number;
+  move: number;
+  disconnect: number;
+  total: number;
 }
 
 // ── Styles ──
@@ -99,10 +81,7 @@ const statLabel: React.CSSProperties = {
   margin: 0,
 };
 
-const actionGrid: React.CSSProperties = {
-  display: "flex",
-  gap: "12px",
-};
+const actionGrid: React.CSSProperties = { display: "flex", gap: "12px" };
 
 const actionBtn: React.CSSProperties = {
   background: "#2563eb",
@@ -113,14 +92,6 @@ const actionBtn: React.CSSProperties = {
   fontSize: "13px",
   fontWeight: 600,
   cursor: "pointer",
-};
-
-const alertCard: React.CSSProperties = {
-  background: "#fef2f2",
-  border: "1px solid #fecaca",
-  borderRadius: "6px",
-  padding: "12px 16px",
-  marginBottom: "8px",
 };
 
 const insightCard: React.CSSProperties = {
@@ -160,98 +131,97 @@ export default function Dashboard() {
 // ══════════════════════════════════════════════
 // ADMIN DASHBOARD
 // ══════════════════════════════════════════════
+const PIE_COLORS = ["#2563eb", "#7c3aed", "#059669", "#dc2626", "#6b7280"];
+const PIE_LABELS = ["New", "Change", "Move", "Disconnect", "Total Active"];
+
+function PieChart({ data }: { data: ConnectionsChart }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const values = [data.newConnections, data.changePlan, data.move, data.disconnect, data.total];
+  const sum = values.reduce((a, b) => a + b, 0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const size = 200;
+    canvas.width = size;
+    canvas.height = size;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 10;
+
+    ctx.clearRect(0, 0, size, size);
+
+    if (sum === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fill();
+      return;
+    }
+
+    let startAngle = -Math.PI / 2;
+    values.forEach((v, i) => {
+      const slice = (v / sum) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+      ctx.closePath();
+      ctx.fillStyle = PIE_COLORS[i];
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      startAngle += slice;
+    });
+
+    // center hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.45, 0, 2 * Math.PI);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+  }, [data]);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "32px", flexWrap: "wrap" }}>
+      <canvas ref={canvasRef} style={{ width: "200px", height: "200px" }} />
+      <div>
+        {PIE_LABELS.map((label, i) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+            <div style={{ width: "12px", height: "12px", borderRadius: "3px", background: PIE_COLORS[i], flexShrink: 0 }} />
+            <span style={{ fontSize: "13px", color: "#374151", minWidth: "90px" }}>{label}</span>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{values[i]}</span>
+          </div>
+        ))}
+        {sum > 0 && (
+          <div style={{ marginTop: "8px", fontSize: "12px", color: "#9ca3af" }}>
+            Last 30 days activity
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [alerts, setAlerts] = useState<CapacityAlert[]>([]);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [chart, setChart] = useState<ConnectionsChart | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    api.get<AdminStats>(ENDPOINTS.DASHBOARD_ADMIN)
-      .then((data) => {
-        setStats(data);
-        if ((data as any).recentActivity) setRecentActivity((data as any).recentActivity);
-      })
-      .catch(() => setStats({ totalCustomers: 0, activeConnections: 0, availablePorts: 0, totalRevenue: 0, newConnectionsThisWeek: 0, disconnectsThisWeek: 0 }));
-
-    api.get<CapacityAlert[]>(ENDPOINTS.CAPACITY_SUMMARY)
-      .then(setAlerts)
-      .catch(() => setAlerts([]))
+    api.get<ConnectionsChart>(ENDPOINTS.DASHBOARD_CONNECTIONS_CHART)
+      .then(setChart)
+      .catch(() => setChart({ newConnections: 0, changePlan: 0, move: 0, disconnect: 0, total: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <p style={{ color: "#6b7280" }}>Loading dashboard...</p>;
 
-  const criticalAlerts = alerts.filter((a) => a.usagePercent >= 80);
-
   return (
     <>
-      {criticalAlerts.length > 0 && (
-        <>
-          <p style={sectionTitle}>🔴 Critical Alerts</p>
-          <div style={{ maxHeight: "200px", overflowY: "auto", maxWidth: "600px" }}>
-            {criticalAlerts.map((a) => (
-              <div key={a.oltCode} style={alertCard}>
-                <span style={{ fontWeight: 600, color: "#991b1b" }}>{a.oltCode}</span>
-                <span style={badge(a.usagePercent >= 95 ? "#dc2626" : "#f59e0b")}>{a.usagePercent}% full</span>
-                <span style={{ fontSize: "13px", color: "#6b7280", marginLeft: "12px" }}>{a.usedPorts}/{a.totalPorts} ports used</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <p style={sectionTitle}>📊 System Overview</p>
-      {stats && (
-        <div style={statsGrid}>
-          <StatCard value={stats.totalCustomers} label="Total Customers" />
-          <StatCard value={stats.activeConnections} label="Active Connections" />
-          <StatCard value={stats.availablePorts} label="Available Ports" />
-          <StatCard value={`₹${stats.totalRevenue.toLocaleString()}`} label="Monthly Revenue" />
-        </div>
-      )}
-
-      {alerts.length > 0 && (
-        <>
-          <p style={sectionTitle}>🧠 Capacity Insights</p>
-          <div style={{ maxWidth: "600px" }}>
-            {alerts.slice(0, 5).map((a) => (
-              <div key={a.oltCode} style={insightCard}>
-                <span style={{ fontWeight: 500 }}>{a.oltCode}</span>
-                <span style={{ fontSize: "13px", color: "#6b7280", marginLeft: "12px" }}>
-                  {a.usagePercent}% utilized — {a.totalPorts - a.usedPorts} ports remaining
-                </span>
-                <ProgressBar percent={a.usagePercent} />
-              </div>
-            ))}
-            <button style={{ ...actionBtn, background: "#4b5563", marginTop: "8px" }} onClick={() => navigate("/capacity")}>View Full Capacity →</button>
-          </div>
-        </>
-      )}
-
-      {stats && (
-        <>
-          <p style={sectionTitle}>📈 This Week</p>
-          <div style={statsGrid}>
-            <StatCard value={stats.newConnectionsThisWeek} label="New Connections" color="#059669" />
-            <StatCard value={stats.disconnectsThisWeek} label="Disconnects" color="#dc2626" />
-          </div>
-        </>
-      )}
-
-      {recentActivity.length > 0 && (
-        <>
-          <p style={sectionTitle}>📋 Recent Activity</p>
-          {recentActivity.slice(0, 5).map((a) => (
-            <div key={a.id} style={insightCard}>
-              <span style={{ fontWeight: 500, fontSize: "13px" }}>{a.type}</span>
-              <span style={{ fontSize: "13px", color: "#6b7280", marginLeft: "8px" }}>{a.description}</span>
-              <span style={{ fontSize: "11px", color: "#9ca3af", float: "right" }}>{a.timestamp}</span>
-            </div>
-          ))}
-        </>
-      )}
+      <p style={sectionTitle}>📊 Connections Overview — Last 30 Days</p>
+      <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "24px", display: "inline-block" }}>
+        {chart && <PieChart data={chart} />}
+      </div>
 
       <p style={sectionTitle}>⚙️ Quick Actions</p>
       <div style={actionGrid}>
@@ -281,7 +251,7 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
         setStats(data);
         if ((data as any).recentActivity) setRecentActivity((data as any).recentActivity);
       })
-      .catch(() => setStats({ totalCustomers: 0, newCustomersToday: 0, pendingRequests: 0, activeConnections: 0 }))
+      .catch(() => setStats({ totalCustomers: 0, newCustomersToday: 0, pendingRequests: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -295,7 +265,6 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
           <StatCard value={stats.totalCustomers} label="Total Customers" />
           <StatCard value={stats.newCustomersToday} label="New Today" color="#059669" />
           <StatCard value={stats.pendingRequests} label="Pending Requests" color="#f59e0b" />
-          <StatCard value={stats.activeConnections} label="Active Connections" />
         </div>
       )}
 
@@ -351,7 +320,7 @@ function MaintDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
         setStats(data);
         if ((data as any).issues) setIssues((data as any).issues);
       })
-      .catch(() => setStats({ activeIssues: 0, pendingTasks: 0, resolvedToday: 0, downConnections: 0 }))
+      .catch(() => setStats({ pendingTasks: 0, resolvedToday: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -361,18 +330,14 @@ function MaintDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
 
   return (
     <>
-      {/* Stats */}
       <p style={sectionTitle}>🚨 Overview</p>
       {stats && (
         <div style={statsGrid}>
-          <StatCard value={stats.activeIssues} label="Active Issues" color="#dc2626" />
-          <StatCard value={stats.downConnections} label="Down Connections" color="#dc2626" />
           <StatCard value={stats.pendingTasks} label="Pending Tasks" color="#f59e0b" />
           <StatCard value={stats.resolvedToday} label="Resolved Today" color="#059669" />
         </div>
       )}
 
-      {/* Active Issues */}
       {issues.length > 0 && (
         <>
           <p style={sectionTitle}>📋 Active Issues</p>
@@ -404,15 +369,6 @@ function StatCard({ value, label, color }: { value: string | number; label: stri
     <div style={statCard}>
       <p style={{ ...statValue, color: color || "#111827" }}>{value}</p>
       <p style={statLabel}>{label}</p>
-    </div>
-  );
-}
-
-function ProgressBar({ percent }: { percent: number }) {
-  const barColor = percent >= 90 ? "#dc2626" : percent >= 70 ? "#f59e0b" : "#059669";
-  return (
-    <div style={{ background: "#e5e7eb", borderRadius: "4px", height: "6px", marginTop: "6px" }}>
-      <div style={{ background: barColor, borderRadius: "4px", height: "6px", width: `${Math.min(percent, 100)}%` }} />
     </div>
   );
 }
