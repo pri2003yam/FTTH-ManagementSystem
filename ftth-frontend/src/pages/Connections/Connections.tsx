@@ -536,8 +536,8 @@ export default function Connections() {
             <input
               value={cpSearchName}
               onChange={(e) => { setCpSearchName(e.target.value); setSelectedConn(null); }}
-              placeholder="Search by name or customer code..."
-              style={{ ...inputStyle, width: "280px" }}
+              placeholder="Search by customer code, name, or pincode..."
+              style={{ ...inputStyle, width: "500px" }}
               onFocus={focusBorder} onBlur={blurBorder}
             />
             {cpSearchName && (
@@ -545,52 +545,49 @@ export default function Connections() {
             )}
           </div>
 
-          {/* Active Connections Table */}
-          <p style={sectionLabel}>ACTIVE CONNECTIONS — click a row to select</p>
-          <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px" }}>
-            {connsLoading ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>Loading connections...</p>
-            ) : connsError ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#dc2626" }}>{connsError}</p>
-            ) : activeConns.length === 0 ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No active connections found.</p>
-            ) : (() => {
-              const filtered = filterConns(activeConns, cpSearchName);
-              return filtered.length === 0 ? (
-                <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No connections match your search.</p>
-              ) : (
-                <div style={{ maxHeight: "294px", overflowY: filtered.length > 7 ? "auto" : "visible" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
-                      <tr style={{ background: "#f1f5f9" }}>
-                        {["Conn ID", "Cust Code", "Customer", "Pincode", "Current Plan", "Price", "OLT", "Port"].map((h) => (
-                          <th key={h} style={thStyle}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((c, i) => {
-                        const sel = selectedConn?.connectionId === c.connectionId;
-                        return (
-                          <tr key={c.connectionId} onClick={() => setSelectedConn(c)}
-                            style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                            <td style={tdStyle}>{c.connectionId}</td>
-                            <td style={tdStyle}>{c.customerCode}</td>
-                            <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
-                            <td style={tdStyle}>{c.pincode}</td>
-                            <td style={tdStyle}>{c.planName}</td>
-                            <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
-                            <td style={tdStyle}>{c.oltType}</td>
-                            <td style={{ ...tdStyle, fontSize: "12px", color: "#6b7280" }}>{c.oltCode}/Spl{c.splitterNumber}/Port{c.portNumber}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
-          </div>
+          {/* Search Results */}
+          {connsLoading && <p style={{ fontSize: "13px", color: "#6b7280" }}>Loading...</p>}
+          {connsError && <p style={{ fontSize: "13px", color: "#dc2626" }}>{connsError}</p>}
+          {!connsLoading && cpSearchName.length >= 2 && (() => {
+            const q = cpSearchName.toLowerCase();
+            const filtered = activeConns.filter((c) =>
+              c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q)
+            );
+            return filtered.length === 0 ? (
+              <p style={{ fontSize: "13px", color: "#6b7280" }}>No connections match "{cpSearchName}".</p>
+            ) : (
+              <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px", maxHeight: "294px", overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      {["Cust Code", "Customer", "Pincode", "Current Plan", "Price", "OLT"].map((h) => (
+                        <th key={h} style={thStyle}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c, i) => {
+                      const sel = selectedConn?.connectionId === c.connectionId;
+                      return (
+                        <tr key={c.connectionId} onClick={() => setSelectedConn(c)}
+                          style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
+                          <td style={tdStyle}>{c.customerCode}</td>
+                          <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
+                          <td style={tdStyle}>{c.pincode}</td>
+                          <td style={tdStyle}>{c.planName}</td>
+                          <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
+                          <td style={tdStyle}>{c.oltType}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+          {!connsLoading && cpSearchName.length < 2 && !selectedConn && (
+            <p style={{ fontSize: "13px", color: "#9ca3af" }}>Type at least 2 characters to search.</p>
+          )}
 
           {/* Available Plans for selected connection */}
           {selectedConn && (
@@ -702,64 +699,63 @@ export default function Connections() {
           </div>
 
           {/* Search */}
-          <div style={{ marginBottom: "12px", maxWidth: "500px" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
             <input
               value={moveSearch}
               onChange={(e) => setMoveSearch(e.target.value)}
               placeholder="Search by customer code, name, or pincode..."
-              style={{ ...inputStyle, width: "100%" }}
+              style={{ ...inputStyle, width: "500px" }}
               onFocus={focusBorder}
               onBlur={blurBorder}
             />
-          </div>
-
-          {/* Active Connections Table */}
-          <p style={sectionLabel}>ACTIVE CONNECTIONS — click a row to select</p>
-          <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px" }}>
-            {connsLoading ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>Loading connections...</p>
-            ) : connsError ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#dc2626" }}>{connsError}</p>
-            ) : activeConns.length === 0 ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No active connections found.</p>
-            ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f1f5f9" }}>
-                    {["Conn ID", "Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT", "Port"].map((h) => (
-                      <th key={h} style={thStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeConns
-                    .filter((c) => {
-                      if (!moveSearch.trim()) return true;
-                      const q = moveSearch.toLowerCase();
-                      return c.customerCode.toLowerCase().includes(q)
-                        || c.fullName.toLowerCase().includes(q)
-                        || c.pincode.includes(q);
-                    })
-                    .map((c, i) => {
-                    const sel = moveConn?.connectionId === c.connectionId;
-                    return (
-                      <tr key={c.connectionId} onClick={() => { setMoveConn(c); setMovePincode(""); setMoveCheck(null); setMoveError(""); setMoveSuccess(""); }}
-                        style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                        <td style={tdStyle}>{c.connectionId}</td>
-                        <td style={tdStyle}>{c.customerCode}</td>
-                        <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
-                        <td style={tdStyle}>{c.pincode}</td>
-                        <td style={tdStyle}>{c.planName}</td>
-                        <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
-                        <td style={tdStyle}>{c.oltType}</td>
-                        <td style={{ ...tdStyle, fontSize: "12px", color: "#6b7280" }}>{c.oltCode}/Spl{c.splitterNumber}/Port{c.portNumber}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {moveSearch && (
+              <button onClick={() => setMoveSearch("")} style={cancelBtn}>Clear</button>
             )}
           </div>
+
+          {/* Search Results */}
+          {connsLoading && <p style={{ fontSize: "13px", color: "#6b7280" }}>Loading...</p>}
+          {connsError && <p style={{ fontSize: "13px", color: "#dc2626" }}>{connsError}</p>}
+          {!connsLoading && moveSearch.length >= 2 && (() => {
+            const q = moveSearch.toLowerCase();
+            const filtered = activeConns.filter((c) =>
+              c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q)
+            );
+            return filtered.length === 0 ? (
+              <p style={{ fontSize: "13px", color: "#6b7280" }}>No connections match "{moveSearch}".</p>
+            ) : (
+              <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px", maxHeight: "294px", overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                    <tr style={{ background: "#f1f5f9" }}>
+                      {["Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT"].map((h) => (
+                        <th key={h} style={thStyle}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c, i) => {
+                      const sel = moveConn?.connectionId === c.connectionId;
+                      return (
+                        <tr key={c.connectionId} onClick={() => { setMoveConn(c); setMovePincode(""); setMoveCheck(null); setMoveError(""); setMoveSuccess(""); }}
+                          style={{ background: sel ? "#e0f2fe" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
+                          <td style={tdStyle}>{c.customerCode}</td>
+                          <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
+                          <td style={tdStyle}>{c.pincode}</td>
+                          <td style={tdStyle}>{c.planName}</td>
+                          <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
+                          <td style={tdStyle}>{c.oltType}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+          {!connsLoading && moveSearch.length < 2 && !moveConn && (
+            <p style={{ fontSize: "13px", color: "#9ca3af" }}>Type at least 2 characters to search.</p>
+          )}
 
           {/* Move form */}
           {moveConn && (
@@ -874,8 +870,8 @@ export default function Connections() {
             <input
               value={dcSearchName}
               onChange={(e) => { setDcSearchName(e.target.value); setDcSelected(null); setDcConfirming(false); }}
-              placeholder="Search by name or customer code..."
-              style={{ ...inputStyle, width: "280px" }}
+              placeholder="Search by customer code, name, or pincode..."
+              style={{ ...inputStyle, width: "500px" }}
               onFocus={focusBorder} onBlur={blurBorder}
             />
             {dcSearchName && (
@@ -883,23 +879,22 @@ export default function Connections() {
             )}
           </div>
 
-          <p style={sectionLabel}>ACTIVE CONNECTIONS — click a row to select</p>
-          <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px" }}>
-            {dcConnsLoading ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>Loading connections...</p>
-            ) : dcConnsError ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#dc2626" }}>{dcConnsError}</p>
-            ) : dcConns.length === 0 ? (
-              <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No active connections found.</p>
-            ) : (() => {
-              const filtered = filterConns(dcConns, dcSearchName);
-              return filtered.length === 0 ? (
-                <p style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>No connections match your search.</p>
-              ) : (
+          {/* Search Results */}
+          {dcConnsLoading && <p style={{ fontSize: "13px", color: "#6b7280" }}>Loading...</p>}
+          {dcConnsError && <p style={{ fontSize: "13px", color: "#dc2626" }}>{dcConnsError}</p>}
+          {!dcConnsLoading && dcSearchName.length >= 2 && (() => {
+            const q = dcSearchName.toLowerCase();
+            const filtered = dcConns.filter((c) =>
+              c.customerCode.toLowerCase().includes(q) || c.fullName.toLowerCase().includes(q) || c.pincode.includes(q)
+            );
+            return filtered.length === 0 ? (
+              <p style={{ fontSize: "13px", color: "#6b7280" }}>No connections match "{dcSearchName}".</p>
+            ) : (
+              <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", marginBottom: "24px", maxHeight: "294px", overflowY: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
+                  <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                     <tr style={{ background: "#f1f5f9" }}>
-                      {["Conn ID", "Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT", "Port"].map((h) => (
+                      {["Cust Code", "Customer", "Pincode", "Plan", "Price", "OLT"].map((h) => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -911,22 +906,23 @@ export default function Connections() {
                         <tr key={c.connectionId}
                           onClick={() => { setDcSelected(c); setDcConfirming(false); setDcError(""); setDcSuccess(""); }}
                           style={{ background: sel ? "#fee2e2" : i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb", cursor: "pointer" }}>
-                          <td style={tdStyle}>{c.connectionId}</td>
                           <td style={tdStyle}>{c.customerCode}</td>
                           <td style={{ ...tdStyle, fontWeight: sel ? 600 : 400 }}>{c.fullName}</td>
                           <td style={tdStyle}>{c.pincode}</td>
                           <td style={tdStyle}>{c.planName}</td>
                           <td style={{ ...tdStyle, color: "#256D85", fontWeight: 500 }}>Rs. {c.monthlyPrice}</td>
                           <td style={tdStyle}>{c.oltType}</td>
-                          <td style={{ ...tdStyle, fontSize: "12px", color: "#6b7280" }}>{c.oltCode}/Spl{c.splitterNumber}/Port{c.portNumber}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
+          {!dcConnsLoading && dcSearchName.length < 2 && !dcSelected && (
+            <p style={{ fontSize: "13px", color: "#9ca3af" }}>Type at least 2 characters to search.</p>
+          )}
 
           {dcSelected && !dcConfirming && (
             <>
