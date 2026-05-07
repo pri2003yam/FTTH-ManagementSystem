@@ -13,6 +13,9 @@ import ftth.util.BillUtil;
 
 public class BillService {
 
+    private static final int BILLING_DAY = 10;
+    private static final int DUE_DAYS = 15;
+
     private final BillRepository billRepository;
 
     public BillService(BillRepository billRepository) {
@@ -21,43 +24,70 @@ public class BillService {
 
     /**
      * Generate the FIRST bill for a new connection (pro-rata).
-     * If activated on May 5th, charges only 5 days (May 5 to May 10).
-     * Bill date = 10th of current month, due date = 10th of current month.
+     *
+     * Billing cycle: 10th to 10th.
+     * If activated on May 6, next billing date is May 10.
+     * Pro-rata days = May 6 to May 10 = 4 days.
+     * Charge = (monthlyPrice / daysInCycle) × daysUsed.
+     * Bill date = next 10th. Due date = bill date + 15 days.
      */
     public Bill generateFirstBill(Long customerId, Long connectionId, Plan plan) {
         LocalDate today = LocalDate.now();
-        LocalDate billDate = today.withDayOfMonth(10);
-        LocalDate dueDate = billDate;
+        LocalDate nextBillDate = getNextBillDate(today);
 
-        // If today is after the 10th, bill cycle is 10th of this month to 10th of next month
-        // Pro-rata = days from today to next 10th
-        int daysInCycle;
-        int daysUsed;
+        // Pro-rata: days from today until the next 10th
+        int daysUsed = (int) (nextBillDate.toEpochDay() - today.toEpochDay());
+        if (daysUsed <= 0) daysUsed = 1; // minimum 1 day
 
-        if (today.getDayOfMonth() <= 10) {
-            // Days from today to 10th of this month
-            daysUsed = 10 - today.getDayOfMonth();
-            daysInCycle = YearMonth.from(today).lengthOfMonth();
-        } else {
-            // Days from today to 10th of next month
-            LocalDate next10th = today.plusMonths(1).withDayOfMonth(10);
-            billDate = next10th;
-            dueDate = next10th;
-            daysUsed = (int) (next10th.toEpochDay() - today.toEpochDay());
-            daysInCycle = YearMonth.from(today).lengthOfMonth();
-        }
+        int daysInCycle = getCycleDays(today);
 
-        BigDecimal monthlyPrice = plan.getMonthlyPrice();
-        BigDecimal dailyRate = monthlyPrice.divide(BigDecimal.valueOf(daysInCycle), 4, RoundingMode.HALF_UP);
-        BigDecimal planCharge = dailyRate.multiply(BigDecimal.valueOf(daysUsed)).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal gstAmount = planCharge.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal planCharge = proRataCharge(plan.getMonthlyPrice(), daysUsed, daysInCycle);
+        BigDecimal gstAmount = gst(planCharge);
 
         Bill bill = new Bill(
             BillUtil.generateBillNo(),
             customerId,
             connectionId,
-            billDate,
-            dueDate,
+            nextBillDate,
+            nextBillDate.plusDays(DUE_DAYS),
+            planCharge,
+            gstAmount
+        );
+
+        billRepository.insert(bill);
+        return bill;
+    }
+
+    /**
+     * Generate a differential bill after a plan change.
+     *
+     * Charges only the DIFFERENCE between new and old plan for remaining days.
+     * Upgrade: positive charge. Downgrade: negative (credit note).
+     * If difference is zero, no bill is generated.
+     */
+    public Bill generatePlanChangeBill(Long customerId, Long connectionId, Plan oldPlan, Plan newPlan) {
+        BigDecimal priceDiff = newPlan.getMonthlyPrice().subtract(oldPlan.getMonthlyPrice());
+
+        // No bill needed if same price
+        if (priceDiff.compareTo(BigDecimal.ZERO) == 0) return null;
+
+        LocalDate today = LocalDate.now();
+        LocalDate nextBillDate = getNextBillDate(today);
+
+        int daysRemaining = (int) (nextBillDate.toEpochDay() - today.toEpochDay());
+        if (daysRemaining <= 0) daysRemaining = 1;
+
+        int daysInCycle = getCycleDays(today);
+
+        BigDecimal planCharge = proRataCharge(priceDiff, daysRemaining, daysInCycle);
+        BigDecimal gstAmount = gst(planCharge);
+
+        Bill bill = new Bill(
+            BillUtil.generateBillNo(),
+            customerId,
+            connectionId,
+            nextBillDate,
+            nextBillDate.plusDays(DUE_DAYS),
             planCharge,
             gstAmount
         );
@@ -68,22 +98,22 @@ public class BillService {
 
     /**
      * Generate a regular monthly bill (full month charge).
-     * Bill date = 10th of current/next month, due date = 10th (same).
+     * Bill date = 10th, due date = 25th (10th + 15 days).
+     * Prevents duplicate bills for the same billing period.
      */
     public Bill generateMonthlyBill(Customer customer, long connectionId, Plan plan) {
         LocalDate today = LocalDate.now();
+        LocalDate billDate = getNextBillDate(today);
 
-        // Bill date is always the 10th
-        LocalDate billDate;
-        if (today.getDayOfMonth() <= 10) {
-            billDate = today.withDayOfMonth(10);
-        } else {
-            billDate = today.plusMonths(1).withDayOfMonth(10);
+        // Check if a bill already exists for this connection and bill date
+        if (billRepository.existsByConnectionAndBillDate(connectionId, billDate)) {
+            throw new RuntimeException("Bill already generated for billing period " + billDate);
         }
-        LocalDate dueDate = billDate;
+
+        LocalDate dueDate = billDate.plusDays(DUE_DAYS);
 
         BigDecimal planCharge = plan.getMonthlyPrice();
-        BigDecimal gstAmount = planCharge.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal gstAmount = gst(planCharge);
 
         Bill bill = new Bill(
             BillUtil.generateBillNo(),
@@ -97,13 +127,6 @@ public class BillService {
 
         billRepository.insert(bill);
         return bill;
-    }
-
-    /**
-     * Generate bill (used by CustomerConnectionService during connection creation).
-     */
-    public Bill generateBill(Customer customer, CustomerConnection connection, Plan plan) {
-        return generateFirstBill(customer.getCustomerId(), connection.getConnectionId(), plan);
     }
 
     // ===============================
@@ -135,44 +158,46 @@ public class BillService {
     }
 
     // ===============================
-    // UPDATE — MARK OVERDUE
+    // HELPERS
     // ===============================
-    public void markOverdueIfRequired(long billId) {
-        Bill bill = billRepository.findById(billId);
 
-        if (bill == null) {
-            throw new RuntimeException("Bill not found");
+    /**
+     * Get the next billing date (10th).
+     * If today is on or before the 10th, bill date = 10th of this month.
+     * If today is after the 10th, bill date = 10th of next month.
+     */
+    private LocalDate getNextBillDate(LocalDate today) {
+        if (today.getDayOfMonth() <= BILLING_DAY) {
+            return today.withDayOfMonth(BILLING_DAY);
         }
-
-        if (bill.getBillStatus() == BillStatus.PAID) {
-            throw new RuntimeException("Bill is already paid");
-        }
-
-        if (bill.getBillStatus() == BillStatus.OVERDUE) {
-            throw new RuntimeException("Bill is already overdue");
-        }
-
-        billRepository.markAsOverdue(billId);
+        return today.plusMonths(1).withDayOfMonth(BILLING_DAY);
     }
 
-    // ===============================
-    // PRINT BILL (console)
-    // ===============================
-    public void printBill(Bill bill, Customer customer) {
-        System.out.println("\n+==========================================+");
-        System.out.println("|         AAHA TELECOM - INVOICE           |");
-        System.out.println("+==========================================+");
-        System.out.printf("| %-14s : %-24s |%n", "Bill No", bill.getBillNo());
-        System.out.printf("| %-14s : %-24s |%n", "Bill Date", bill.getBillDate());
-        System.out.printf("| %-14s : %-24s |%n", "Due Date", bill.getDueDate());
-        System.out.println("+------------------------------------------+");
-        System.out.printf("| %-14s : %-24s |%n", "Customer ID", customer.getCustomerCode());
-        System.out.printf("| %-14s : %-24s |%n", "Name", customer.getFullName());
-        System.out.println("+------------------------------------------+");
-        System.out.printf("| %-14s : Rs %-20s |%n", "Plan Charge", bill.getPlanCharge().setScale(2));
-        System.out.printf("| %-14s : Rs %-20s |%n", "GST (18%)", bill.getGstAmount().setScale(2));
-        System.out.println("| ---------------------------------------- |");
-        System.out.printf("| %-14s : Rs %-20s |%n", "TOTAL", bill.getTotalAmount().setScale(2));
-        System.out.println("+==========================================+");
+    /**
+     * Get the number of days in the current billing cycle.
+     * Cycle = previous 10th to next 10th.
+     */
+    private int getCycleDays(LocalDate today) {
+        LocalDate cycleStart;
+        LocalDate cycleEnd;
+
+        if (today.getDayOfMonth() <= BILLING_DAY) {
+            cycleStart = today.minusMonths(1).withDayOfMonth(BILLING_DAY);
+            cycleEnd = today.withDayOfMonth(BILLING_DAY);
+        } else {
+            cycleStart = today.withDayOfMonth(BILLING_DAY);
+            cycleEnd = today.plusMonths(1).withDayOfMonth(BILLING_DAY);
+        }
+
+        return (int) (cycleEnd.toEpochDay() - cycleStart.toEpochDay());
+    }
+
+    private BigDecimal proRataCharge(BigDecimal monthlyPrice, int days, int cycleDays) {
+        BigDecimal dailyRate = monthlyPrice.divide(BigDecimal.valueOf(cycleDays), 4, RoundingMode.HALF_UP);
+        return dailyRate.multiply(BigDecimal.valueOf(days)).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal gst(BigDecimal amount) {
+        return amount.multiply(new BigDecimal("0.18")).setScale(2, RoundingMode.HALF_UP);
     }
 }

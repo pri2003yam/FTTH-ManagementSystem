@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -170,6 +171,23 @@ public void markAsOverdue(Long billId) {
         throw new RuntimeException("Error marking bill as OVERDUE", e);
     }
 }
+    // ===============================
+    // CHECK — DUPLICATE BILL
+    // ===============================
+    public boolean existsByConnectionAndBillDate(long connectionId, LocalDate billDate) {
+        String sql = "SELECT COUNT(*) FROM bills WHERE connection_id = ? AND bill_date = ?";
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, connectionId);
+            ps.setDate(2, Date.valueOf(billDate));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error checking duplicate bill", e);
+        }
+    }
+
     // ===============================
     // DELETE — ❌ NOT ALLOWED
     // ===============================

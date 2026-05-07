@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
-import { primaryBtn, cancelBtn, thStyle, tdStyle, errText } from "../Users/UsersShared";
+import { cancelBtn, thStyle, tdStyle, errText } from "../Users/UsersShared";
 
 interface BillRow {
   billId: number;
@@ -17,7 +17,6 @@ interface BillRow {
 export default function BillingTab({ customerCode }: { customerCode: string }) {
   const [bills, setBills] = useState<BillRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [genLoading, setGenLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
@@ -31,21 +30,6 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
 
   useEffect(() => { loadBills(); }, [customerCode]);
 
-  const handleGenerate = async () => {
-    setGenLoading(true);
-    setMsg("");
-    setError("");
-    try {
-      await api.post(ENDPOINTS.CUSTOMER_GENERATE_BILL(customerCode), {});
-      setMsg("Bill generated successfully.");
-      loadBills();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to generate bill.");
-    } finally {
-      setGenLoading(false);
-    }
-  };
-
   const handlePay = async (billId: number) => {
     setMsg("");
     setError("");
@@ -57,7 +41,6 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
       setError(err instanceof Error ? err.message : "Failed.");
     }
   };
-
 
   const statusBadge = (status: string) => {
     const colors: Record<string, { bg: string; text: string }> = {
@@ -74,13 +57,8 @@ export default function BillingTab({ customerCode }: { customerCode: string }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-        <button onClick={handleGenerate} disabled={genLoading} style={primaryBtn}>
-          {genLoading ? "Generating..." : "Generate Bill"}
-        </button>
-        {msg && <span style={{ fontSize: "13px", color: "#16a34a" }}>{msg}</span>}
-        {error && <span style={errText}>{error}</span>}
-      </div>
+      {msg && <p style={{ fontSize: "13px", color: "#16a34a", marginBottom: "12px" }}>{msg}</p>}
+      {error && <p style={{ ...errText, marginBottom: "12px" }}>{error}</p>}
 
       <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden" }}>
         {loading ? (

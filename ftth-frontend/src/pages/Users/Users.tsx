@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/apiClient";
 import { ENDPOINTS } from "../../services/endpoints";
 import { useAuth } from "../../context/AuthContext";
-import { primaryBtn, outlineBtn, thStyle, tdStyle } from "./UsersShared";
+import PageWrapper from "../../components/layout/PageWrapper";
+import Card from "../../components/ui/Card";
+import Table from "../../components/ui/Table";
+import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
+import Loader from "../../components/ui/Loader";
 import CreateUserForm from "./CreateUserForm";
 import EditUserModal from "./EditUserModal";
 import DeleteUserModal from "./DeleteUserModal";
@@ -37,68 +42,56 @@ export default function Users() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  return (
-    <div style={{ fontFamily: "'Source Sans 3', 'Segoe UI', sans-serif", padding: "24px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: 600, color: "#111827", margin: 0 }}>User Management</h1>
-        <button onClick={() => setShowCreate(true)} style={primaryBtn}>
-          + Create New User
-        </button>
-      </div>
+  if (loading) return <Loader />;
 
-      {/* Table */}
-      <div style={{ background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden" }}>
-        {loading ? (
-          <p style={{ padding: "20px", color: "#6b7280", fontSize: "14px" }}>Loading...</p>
-        ) : error ? (
-          <p style={{ padding: "20px", color: "#dc2626", fontSize: "14px" }}>{error}</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f1f5f9" }}>
-                {["Username", "Role", "Status", "Action"].map((h) => (
-                  <th key={h} style={thStyle}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ padding: "16px", textAlign: "center", color: "#6b7280", fontSize: "14px" }}>
-                    No users found.
-                  </td>
-                </tr>
-              ) : (
-                users.map((u, i) => (
-                  <tr key={u.username} style={{ background: i % 2 === 1 ? "#fafafa" : "#ffffff", borderTop: "1px solid #e5e7eb" }}>
-                    <td style={tdStyle}>{u.username}</td>
-                    <td style={tdStyle}>{u.role}</td>
-                    <td style={tdStyle}>
-                      <span style={{ color: "#16a34a", fontSize: "13px", fontWeight: 500 }}>{u.status}</span>
-                    </td>
-                    <td style={tdStyle}>
-                      {u.role !== "ADMIN" && currentRole === "ADMIN" ? (
-                        <>
-                          <button onClick={() => setEditTarget(u)} style={outlineBtn}>Edit</button>
-                          <button
-                            onClick={() => setDeleteTarget(u.username)}
-                            style={{ ...outlineBtn, color: "#dc2626", borderColor: "#dc2626", marginLeft: "8px" }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: "13px", color: "#9ca3af" }}>—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+  return (
+    <PageWrapper title="User Management">
+      {currentRole === "ADMIN" && (
+        <Button onClick={() => setShowCreate(true)} style={{ padding: "6px 14px", fontSize: "13px", alignSelf: "flex-start" }}>
+          + Create New User
+        </Button>
+      )}
+
+      {error && <p style={{ color: "#dc2626", fontSize: "13px" }}>{error}</p>}
+
+      <Card>
+        <Table
+          keyField="username"
+          data={users}
+          columns={[
+            { key: "username", header: "Username" },
+            { key: "role",     header: "Role" },
+            {
+              key: "status",
+              header: "Status",
+              render: (r) => <Badge label={r.status} variant="success" />,
+            },
+            {
+              key: "actions",
+              header: "Actions",
+              render: (r) =>
+                r.role !== "ADMIN" && currentRole === "ADMIN" ? (
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <button
+                      style={{ fontSize: "13px", color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      onClick={() => setEditTarget(r)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      style={{ fontSize: "13px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      onClick={() => setDeleteTarget(r.username)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: "13px", color: "#9ca3af" }}>—</span>
+                ),
+            },
+          ]}
+        />
+      </Card>
 
       {showCreate && (
         <CreateUserForm
@@ -123,6 +116,6 @@ export default function Users() {
           onSuccess={() => { setDeleteTarget(null); fetchUsers(); }}
         />
       )}
-    </div>
+    </PageWrapper>
   );
 }
