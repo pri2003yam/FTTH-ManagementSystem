@@ -64,6 +64,29 @@ public class DashboardApiController {
     }
 
     // ══════════════════════════════════════════════
+    // CONNECTIONS CHART (last 30 days)
+    // ══════════════════════════════════════════════
+    @GetMapping("/connections-chart")
+    public ResponseEntity<Map<String, Object>> connectionsChart() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try (Connection con = DbConnection.getConnection()) {
+            result.put("newConnections", countQuery(con,
+                "SELECT COUNT(*) FROM email_logs WHERE email_type = 'ORDER_CONFIRMATION' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"));
+            result.put("changePlan", countQuery(con,
+                "SELECT COUNT(*) FROM email_logs WHERE email_type = 'PLAN_CHANGE' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"));
+            result.put("move", countQuery(con,
+                "SELECT COUNT(*) FROM email_logs WHERE email_type = 'SERVICE_MOVE' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"));
+            result.put("disconnect", countQuery(con,
+                "SELECT COUNT(*) FROM email_logs WHERE email_type = 'DISCONNECT' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"));
+            result.put("total", countQuery(con,
+                "SELECT COUNT(*) FROM customer_connections WHERE connection_status = 'ACTIVE'"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // ══════════════════════════════════════════════
     // CAPACITY SUMMARY (used by admin alerts)
     // ══════════════════════════════════════════════
     @GetMapping("/capacity-summary")
