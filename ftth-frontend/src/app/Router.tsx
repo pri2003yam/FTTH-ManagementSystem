@@ -6,6 +6,7 @@ import Connections from "../pages/Connections/Connections";
 import Customers from "../pages/CustomerScreen/CustomerScreen";
 import Inventory from "../pages/Inventory/Inventory";
 import Plans from "../pages/Plans/Plans";
+import Catalog from "../pages/Catalog/Catalog";
 import Capacity from "../pages/Capacity/Capacity";
 import Users from "../pages/Users/Users";
 import Maintenance from "../pages/Maintenance/Maintenance";
@@ -23,6 +24,7 @@ export default function AppRouter() {
         <Route path="/customers" element={<Customers />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/plans" element={<Plans />} />
+        <Route path="/catalog" element={<Catalog />} />
         <Route path="/capacity" element={<Capacity />} />
         <Route path="/users" element={<Users />} />
         <Route path="/maintenance" element={<Maintenance />} />
