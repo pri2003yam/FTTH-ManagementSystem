@@ -12,6 +12,10 @@ export const ENDPOINTS = {
   // Auth
   AUTH_LOGIN: "/api/auth/login",
 
+  // ECM Offerings
+  ECM_OFFERINGS: "/api/ecm/offerings",
+  ECM_OFFERING_BY_CODE: (code: string) => `/api/ecm/offerings/${code}`,
+
   // Plans
   PLANS: "/api/plans",
   PLAN_BY_ID: (id: number) => `/api/plans/${id}`,

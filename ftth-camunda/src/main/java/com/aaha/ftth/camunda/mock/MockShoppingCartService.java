@@ -3,7 +3,6 @@ package com.aaha.ftth.camunda.mock;
 import com.aaha.ftth.eoc.delegate.adapter.ShoppingCartService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,10 +10,10 @@ import java.util.UUID;
 
 /**
  * Mock implementation of EOC's shoppingCartService bean for local testing.
- * Simulates Shopping Cart operations by logging and returning fake data.
- * Replace this with the real EOC adapter when deploying to the Process Controller.
+ * DISABLED: Replaced by EcmShoppingCartService which integrates with real ECM.
+ * To re-enable mocks, add @Component annotation back and remove EcmShoppingCartService.
  */
-@Component
+// @Component  ← DISABLED: Using EcmShoppingCartService instead
 public class MockShoppingCartService implements ShoppingCartService {
 
     private static final Logger log = LoggerFactory.getLogger(MockShoppingCartService.class);
