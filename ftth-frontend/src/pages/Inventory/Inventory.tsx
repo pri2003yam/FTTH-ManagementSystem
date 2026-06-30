@@ -1,6 +1,5 @@
 import { useState } from "react";
 import PageWrapper from "../../components/layout/PageWrapper";
-import Button from "../../components/ui/Button";
 import InventorySummary from "./InventorySummary";
 import AddOltForm from "./AddOltForm";
 import RemoveOltForm from "./RemoveOltForm";

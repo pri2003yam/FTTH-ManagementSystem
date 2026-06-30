@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_DC"
+                  targetNamespace="http://aaha-telecom.com/ftth">
+
+  <bpmn:process id="Process_Disconnect" name="Disconnect Connection" isExecutable="true">
+
+    <bpmn:startEvent id="Start" name="Disconnect request">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Check connection exists and is active -->
+    <bpmn:serviceTask id="Task_CheckConn" name="Check Connection Active"
+                      camunda:type="external" camunda:topic="dc_checkConnection">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Conn" name="Connection Active?">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F_Conn_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Conn_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Execute disconnect -->
+    <bpmn:serviceTask id="Task_Disconnect" name="Disconnect (Release Port + Deactivate + Email)"
+                      camunda:type="external" camunda:topic="dc_disconnect">
+      <bpmn:incoming>F_Conn_Yes</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_Success" name="Disconnected">
+      <bpmn:incoming>F3</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err" name="Connection Not Found or Already Disconnected">
+      <bpmn:incoming>F_Conn_No</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="F1" sourceRef="Start" targetRef="Task_CheckConn" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_CheckConn" targetRef="GW_Conn" />
+    <bpmn:sequenceFlow id="F_Conn_Yes" name="YES" sourceRef="GW_Conn" targetRef="Task_Disconnect">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Conn_No" name="NO" sourceRef="GW_Conn" targetRef="End_Err">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_Disconnect" targetRef="End_Success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DC">
+    <bpmndi:BPMNPlane id="BPMNPlane_DC" bpmnElement="Process_Disconnect">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start"><dc:Bounds x="180" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckConn_di" bpmnElement="Task_CheckConn"><dc:Bounds x="270" y="140" width="160" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Conn_di" bpmnElement="GW_Conn" isMarkerVisible="true"><dc:Bounds x="485" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Disconnect_di" bpmnElement="Task_Disconnect"><dc:Bounds x="590" y="140" width="200" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Success_di" bpmnElement="End_Success"><dc:Bounds x="852" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_di" bpmnElement="End_Err"><dc:Bounds x="492" y="302" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1"><di:waypoint x="216" y="180" /><di:waypoint x="270" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2"><di:waypoint x="430" y="180" /><di:waypoint x="485" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Conn_Yes_di" bpmnElement="F_Conn_Yes"><di:waypoint x="535" y="180" /><di:waypoint x="590" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Conn_No_di" bpmnElement="F_Conn_No"><di:waypoint x="510" y="205" /><di:waypoint x="510" y="302" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3"><di:waypoint x="790" y="180" /><di:waypoint x="852" y="180" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

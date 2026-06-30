@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_WR"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_DuplicateWR" name="DuplicateWorkRequestError" errorCode="ERR_DUPLICATE_WR" />
+
+  <bpmn:collaboration id="Collab_WR">
+    <bpmn:participant id="Pool_WR" name="Work Request Lifecycle — Aaha Telecom FTTH" processRef="Process_WR" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_WR" name="Work Request" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_WR">
+      <bpmn:lane id="Lane_CSR_WR" name="CSR (raises request)">
+        <bpmn:flowNodeRef>Start_WR</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateWR</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_Duplicate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_WR_Err</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sys_WR" name="System (WorkRequestService)">
+        <bpmn:flowNodeRef>Task_InsertWR</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyMaint</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CloseNotify</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_WR_OK</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Maint_WR" name="MAINTENANCE (accepts &amp; resolves)">
+        <bpmn:flowNodeRef>Task_Accept</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_Release</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Release</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_InProgress</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Resolved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Close</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- CSR Creates -->
+    <bpmn:startEvent id="Start_WR" name="CSR raises work request">
+      <bpmn:outgoing>WF1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_CreateWR" name="Enter: pincode, oltType, actionType (ADD_OLT/REMOVE_OLT/ADD_SPLITTER/REMOVE_SPLITTER), description">
+      <bpmn:incoming>WF1</bpmn:incoming>
+      <bpmn:outgoing>WF2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="GW_Duplicate" name="Active WR exists for same pincode/oltType?">
+      <bpmn:incoming>WF2</bpmn:incoming>
+      <bpmn:outgoing>WF2_No</bpmn:outgoing>
+      <bpmn:outgoing>WF2_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:endEvent id="End_WR_Err" name="An active work request already exists">
+      <bpmn:incoming>WF2_Yes</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_WR" errorRef="Error_DuplicateWR" />
+    </bpmn:endEvent>
+
+    <!-- System inserts -->
+    <bpmn:serviceTask id="Task_InsertWR" name="wrRepo.insert(WorkRequest) — Status: NEW" camunda:expression="${true}">
+      <bpmn:incoming>WF2_No</bpmn:incoming>
+      <bpmn:outgoing>WF3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_NotifyMaint" name="notifyAllMaintenance() — Send notification to ALL MAINT users" camunda:expression="${true}">
+      <bpmn:incoming>WF3</bpmn:incoming>
+      <bpmn:outgoing>WF4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- MAINT accepts -->
+    <bpmn:userTask id="Task_Accept" name="MAINT accepts WR — Status: ACCEPTED, assignedTo=actor, clear notifications">
+      <bpmn:incoming>WF4</bpmn:incoming>
+      <bpmn:incoming>WF_ReleaseBack</bpmn:incoming>
+      <bpmn:outgoing>WF5</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="GW_Release" name="Release back to queue?">
+      <bpmn:incoming>WF5</bpmn:incoming>
+      <bpmn:outgoing>WF5_No</bpmn:outgoing>
+      <bpmn:outgoing>WF5_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_Release" name="Release → NEW, assignedTo=null, re-notify all MAINT" camunda:expression="${true}">
+      <bpmn:incoming>WF5_Yes</bpmn:incoming>
+      <bpmn:outgoing>WF_ReleaseBack</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:userTask id="Task_InProgress" name="MAINT starts work — Status: IN_PROGRESS">
+      <bpmn:incoming>WF5_No</bpmn:incoming>
+      <bpmn:outgoing>WF6</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Resolved" name="MAINT completes work — Status: RESOLVED">
+      <bpmn:incoming>WF6</bpmn:incoming>
+      <bpmn:outgoing>WF7</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Close" name="Close WR — Status: CLOSED">
+      <bpmn:incoming>WF7</bpmn:incoming>
+      <bpmn:outgoing>WF8</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- System notifies CSR on close -->
+    <bpmn:serviceTask id="Task_CloseNotify" name="Notify CSR (raisedBy): Work request #X has been CLOSED" camunda:expression="${true}">
+      <bpmn:incoming>WF8</bpmn:incoming>
+      <bpmn:outgoing>WF9</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_WR_OK" name="Work Request Closed">
+      <bpmn:incoming>WF9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Flows -->
+    <bpmn:sequenceFlow id="WF1" sourceRef="Start_WR" targetRef="Task_CreateWR" />
+    <bpmn:sequenceFlow id="WF2" sourceRef="Task_CreateWR" targetRef="GW_Duplicate" />
+    <bpmn:sequenceFlow id="WF2_No" name="NO" sourceRef="GW_Duplicate" targetRef="Task_InsertWR">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${duplicateExists == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="WF2_Yes" name="YES" sourceRef="GW_Duplicate" targetRef="End_WR_Err">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${duplicateExists == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="WF3" sourceRef="Task_InsertWR" targetRef="Task_NotifyMaint" />
+    <bpmn:sequenceFlow id="WF4" sourceRef="Task_NotifyMaint" targetRef="Task_Accept" />
+    <bpmn:sequenceFlow id="WF5" sourceRef="Task_Accept" targetRef="GW_Release" />
+    <bpmn:sequenceFlow id="WF5_Yes" name="YES (release)" sourceRef="GW_Release" targetRef="Task_Release">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${releaseToQueue == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="WF5_No" name="NO (continue)" sourceRef="GW_Release" targetRef="Task_InProgress">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${releaseToQueue == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="WF_ReleaseBack" sourceRef="Task_Release" targetRef="Task_Accept" />
+    <bpmn:sequenceFlow id="WF6" sourceRef="Task_InProgress" targetRef="Task_Resolved" />
+    <bpmn:sequenceFlow id="WF7" sourceRef="Task_Resolved" targetRef="Task_Close" />
+    <bpmn:sequenceFlow id="WF8" sourceRef="Task_Close" targetRef="Task_CloseNotify" />
+    <bpmn:sequenceFlow id="WF9" sourceRef="Task_CloseNotify" targetRef="End_WR_OK" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_WR">
+    <bpmndi:BPMNPlane id="BPMNPlane_WR" bpmnElement="Collab_WR">
+      <bpmndi:BPMNShape id="Pool_WR_di" bpmnElement="Pool_WR" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1800" height="600" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSR_WR_di" bpmnElement="Lane_CSR_WR" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1770" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_WR_di" bpmnElement="Lane_Sys_WR" isHorizontal="true">
+        <dc:Bounds x="190" y="220" width="1770" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Maint_WR_di" bpmnElement="Lane_Maint_WR" isHorizontal="true">
+        <dc:Bounds x="190" y="380" width="1770" height="280" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_WR_di" bpmnElement="Start_WR">
+        <dc:Bounds x="232" y="122" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateWR_di" bpmnElement="Task_CreateWR">
+        <dc:Bounds x="310" y="100" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Duplicate_di" bpmnElement="GW_Duplicate" isMarkerVisible="true">
+        <dc:Bounds x="555" y="115" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_WR_Err_di" bpmnElement="End_WR_Err">
+        <dc:Bounds x="662" y="122" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InsertWR_di" bpmnElement="Task_InsertWR">
+        <dc:Bounds x="500" y="270" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyMaint_di" bpmnElement="Task_NotifyMaint">
+        <dc:Bounds x="710" y="270" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Accept_di" bpmnElement="Task_Accept">
+        <dc:Bounds x="710" y="430" width="180" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Release_di" bpmnElement="GW_Release" isMarkerVisible="true">
+        <dc:Bounds x="945" y="440" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Release_di" bpmnElement="Task_Release">
+        <dc:Bounds x="920" y="560" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InProgress_di" bpmnElement="Task_InProgress">
+        <dc:Bounds x="1050" y="430" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Resolved_di" bpmnElement="Task_Resolved">
+        <dc:Bounds x="1260" y="430" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Close_di" bpmnElement="Task_Close">
+        <dc:Bounds x="1470" y="430" width="140" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CloseNotify_di" bpmnElement="Task_CloseNotify">
+        <dc:Bounds x="1450" y="270" width="200" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_WR_OK_di" bpmnElement="End_WR_OK">
+        <dc:Bounds x="1702" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

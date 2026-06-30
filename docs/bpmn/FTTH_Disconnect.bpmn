@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Disconnect"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_ConnNotFound" name="ConnectionNotFoundError" errorCode="ERR_CONN_NOT_FOUND" />
+
+  <bpmn:collaboration id="Collab_Disconnect">
+    <bpmn:participant id="Pool_Disconnect" name="Disconnect Connection — POST /api/connections/{id}/disconnect" processRef="Process_Disconnect" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_Disconnect" name="Disconnect" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_DC">
+      <bpmn:lane id="Lane_CSR_DC" name="CSR">
+        <bpmn:flowNodeRef>Start_DC</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectConn</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sys_DC" name="System (CustomerConnectionService.disconnect)">
+        <bpmn:flowNodeRef>Task_FetchConn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_ConnFound</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SetDisconnected</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReleasePort</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Deactivate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DisconnectEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_DC_OK</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_DC_Err</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_DC" name="CSR initiates disconnect">
+      <bpmn:outgoing>DF1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_SelectConn" name="Select Active Connection to Disconnect">
+      <bpmn:incoming>DF1</bpmn:incoming>
+      <bpmn:outgoing>DF2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_FetchConn" name="connectionRepo.findById(connectionId)" camunda:expression="${true}">
+      <bpmn:incoming>DF2</bpmn:incoming>
+      <bpmn:outgoing>DF3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_ConnFound" name="Connection Found &amp; Active?">
+      <bpmn:incoming>DF3</bpmn:incoming>
+      <bpmn:outgoing>DF3_Yes</bpmn:outgoing>
+      <bpmn:outgoing>DF3_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_SetDisconnected" name="connectionRepo.disconnect(connectionId, LocalDate.now(), userId) — status=DISCONNECTED" camunda:expression="${true}">
+      <bpmn:incoming>DF3_Yes</bpmn:incoming>
+      <bpmn:outgoing>DF4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ReleasePort" name="inventoryService.releasePort(portId) — Port: ASSIGNED → AVAILABLE" camunda:expression="${true}">
+      <bpmn:incoming>DF4</bpmn:incoming>
+      <bpmn:outgoing>DF5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Deactivate" name="customer.deactivate() — Customer: ACTIVE → INACTIVE" camunda:expression="${true}">
+      <bpmn:incoming>DF5</bpmn:incoming>
+      <bpmn:outgoing>DF6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_DisconnectEmail" name="email.sendDisconnectionEmail(customer, connection) — DISCONNECT" camunda:expression="${true}">
+      <bpmn:incoming>DF6</bpmn:incoming>
+      <bpmn:outgoing>DF7</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_DC_OK" name="Connection Disconnected Successfully">
+      <bpmn:incoming>DF7</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_DC_Err" name="Connection not found or already disconnected">
+      <bpmn:incoming>DF3_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_DC" errorRef="Error_ConnNotFound" />
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="DF1" sourceRef="Start_DC" targetRef="Task_SelectConn" />
+    <bpmn:sequenceFlow id="DF2" sourceRef="Task_SelectConn" targetRef="Task_FetchConn" />
+    <bpmn:sequenceFlow id="DF3" sourceRef="Task_FetchConn" targetRef="GW_ConnFound" />
+    <bpmn:sequenceFlow id="DF3_Yes" name="YES" sourceRef="GW_ConnFound" targetRef="Task_SetDisconnected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionFound == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="DF3_No" name="NO" sourceRef="GW_ConnFound" targetRef="End_DC_Err">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionFound == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="DF4" sourceRef="Task_SetDisconnected" targetRef="Task_ReleasePort" />
+    <bpmn:sequenceFlow id="DF5" sourceRef="Task_ReleasePort" targetRef="Task_Deactivate" />
+    <bpmn:sequenceFlow id="DF6" sourceRef="Task_Deactivate" targetRef="Task_DisconnectEmail" />
+    <bpmn:sequenceFlow id="DF7" sourceRef="Task_DisconnectEmail" targetRef="End_DC_OK" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DC">
+    <bpmndi:BPMNPlane id="BPMNPlane_DC" bpmnElement="Collab_Disconnect">
+      <bpmndi:BPMNShape id="Pool_Disconnect_di" bpmnElement="Pool_Disconnect" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1400" height="450" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSR_DC_di" bpmnElement="Lane_CSR_DC" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1370" height="130" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_DC_di" bpmnElement="Lane_Sys_DC" isHorizontal="true">
+        <dc:Bounds x="190" y="190" width="1370" height="320" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_DC_di" bpmnElement="Start_DC">
+        <dc:Bounds x="232" y="107" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectConn_di" bpmnElement="Task_SelectConn">
+        <dc:Bounds x="310" y="90" width="170" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FetchConn_di" bpmnElement="Task_FetchConn">
+        <dc:Bounds x="270" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_ConnFound_di" bpmnElement="GW_ConnFound" isMarkerVisible="true">
+        <dc:Bounds x="475" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SetDisconnected_di" bpmnElement="Task_SetDisconnected">
+        <dc:Bounds x="570" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReleasePort_di" bpmnElement="Task_ReleasePort">
+        <dc:Bounds x="770" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Deactivate_di" bpmnElement="Task_Deactivate">
+        <dc:Bounds x="970" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DisconnectEmail_di" bpmnElement="Task_DisconnectEmail">
+        <dc:Bounds x="1170" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_DC_OK_di" bpmnElement="End_DC_OK">
+        <dc:Bounds x="1372" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_DC_Err_di" bpmnElement="End_DC_Err">
+        <dc:Bounds x="482" y="422" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

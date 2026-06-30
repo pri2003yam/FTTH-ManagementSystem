@@ -5,6 +5,6 @@ interface Props {
   children: ReactNode;
 }
 
-export default function PageWrapper({ title, children }: Props) {
+export default function PageWrapper({ title: _title, children }: Props) {
   return <div className="page-container">{children}</div>;
 }

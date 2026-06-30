@@ -116,13 +116,13 @@ const badge = (color: string): React.CSSProperties => ({
 // ── Main Component ──
 export default function Dashboard() {
   const { role, user } = useAuth();
-  const navigate = useNavigate();
+  const nav = useNavigate();
 
   return (
     <div style={container}>
       <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 8px 0" }}>Welcome back, {user}.</p>
-      {role === "ADMIN" && <AdminDashboard navigate={navigate} />}
-      {role === "CSR" && <CsrDashboard navigate={navigate} />}
+      {role === "ADMIN" && <AdminDashboard navigate={nav} />}
+      {role === "CSR" && <CsrDashboard navigate={nav} />}
       {role === "MAINT" && <MaintDashboard />}
     </div>
   );
@@ -238,7 +238,7 @@ function AdminDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate>
 // ══════════════════════════════════════════════
 // CSR DASHBOARD
 // ══════════════════════════════════════════════
-function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+function CsrDashboard({ navigate: _ }: { navigate: ReturnType<typeof useNavigate> }) {
   const [stats, setStats] = useState<CsrStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,13 +291,14 @@ function CsrDashboard({ navigate }: { navigate: ReturnType<typeof useNavigate> }
 // MAINTENANCE DASHBOARD
 // ══════════════════════════════════════════════
 function MaintDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<MaintStats | null>(null);
   const [issues, setIssues] = useState<MaintIssue[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    api.get<MaintStats>(ENDPOINTS.DASHBOARD_MAINT)
+    api.get<MaintStats>(`${ENDPOINTS.DASHBOARD_MAINT}?username=${user}`)
       .then((data) => {
         setStats(data);
         if ((data as any).issues) setIssues((data as any).issues);

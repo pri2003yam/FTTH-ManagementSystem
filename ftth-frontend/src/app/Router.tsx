@@ -9,6 +9,7 @@ import Plans from "../pages/Plans/Plans";
 import Capacity from "../pages/Capacity/Capacity";
 import Users from "../pages/Users/Users";
 import Maintenance from "../pages/Maintenance/Maintenance";
+import WorkRequests from "../pages/WorkRequests/WorkRequests";
 import Login from "../pages/Login/Login";
 
 export default function AppRouter() {
@@ -25,6 +26,7 @@ export default function AppRouter() {
         <Route path="/capacity" element={<Capacity />} />
         <Route path="/users" element={<Users />} />
         <Route path="/maintenance" element={<Maintenance />} />
+        <Route path="/work-requests" element={<WorkRequests />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" />} />

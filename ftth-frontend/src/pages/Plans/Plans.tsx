@@ -8,8 +8,8 @@ import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import { api } from "../../services/apiClient";
 import {
-  inputStyle, primaryBtn, cancelBtn, thStyle, tdStyle,
-  focusBorder, blurBorder, errText,
+  inputStyle, cancelBtn, thStyle, tdStyle,
+  focusBorder, blurBorder,
 } from "../Users/UsersShared";
 
 interface Plan {

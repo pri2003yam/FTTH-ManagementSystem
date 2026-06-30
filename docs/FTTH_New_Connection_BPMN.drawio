@@ -1,0 +1,211 @@
+<mxfile host="app.diagrams.net" agent="Kiro">
+  <diagram name="New Customer FTTH Connection" id="ftth-new-conn">
+    <mxGraphModel dx="1191" dy="712" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pool" parent="1" style="shape=pool;startSize=30;horizontal=1;childLayout=stackLayout;horizontalStack=0;resizeParent=1;collapsible=0;fontStyle=1;fontSize=14;" value="New Customer FTTH Connection — Aaha Telecom" vertex="1">
+          <mxGeometry height="1300" width="2500" x="390" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_csr" parent="pool" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="CSR" vertex="1">
+          <mxGeometry height="200" width="2500" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="lane_csr" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=general;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=standard;fillColor=#67AB9F;strokeColor=#2D7600;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" parent="lane_csr" style="shape=mxgraph.bpmn.task;taskMarker=user;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="Enter Customer Details&#xa;(name, email, salary,&#xa;pincode, planId, oltType)" vertex="1">
+          <mxGeometry height="90" width="190" x="150" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="t_done" parent="lane_csr" style="shape=mxgraph.bpmn.task;taskMarker=user;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" value="Receive Response&#xa;(connectionId, customerCode,&#xa;oltCode, portNumber)" vertex="1">
+          <mxGeometry height="90" width="190" x="2230" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" edge="1" parent="lane_csr" source="start" style="edgeStyle=orthogonalEdgeStyle;" target="t1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_sys" parent="pool" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" value="SYSTEM" vertex="1">
+          <mxGeometry height="500" width="2500" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="gw1" parent="lane_sys" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="X" vertex="1">
+          <mxGeometry height="50" width="50" x="195" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gw1_label" parent="lane_sys" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" value="Salary &gt; ₹30K?" vertex="1">
+          <mxGeometry height="30" width="100" x="170" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="t_plan" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Find Plan by ID" vertex="1">
+          <mxGeometry height="60" width="140" x="300" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="gw2" parent="lane_sys" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="X" vertex="1">
+          <mxGeometry height="50" width="50" x="490" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gw2_label" parent="lane_sys" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" value="Plan Valid&#xa;&amp; Active?" vertex="1">
+          <mxGeometry height="35" width="95" x="468" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="t_area" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Find Service Area&#xa;by Pincode" vertex="1">
+          <mxGeometry height="60" width="150" x="590" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="gw3" parent="lane_sys" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="X" vertex="1">
+          <mxGeometry height="50" width="50" x="790" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gw3_label" parent="lane_sys" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" value="Area Exists&#xa;&amp; Active?" vertex="1">
+          <mxGeometry height="35" width="95" x="768" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="t_ports" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="Check Port&#xa;Availability&#xa;(by oltType)" vertex="1">
+          <mxGeometry height="70" width="140" x="890" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="gw4" parent="lane_sys" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="X" vertex="1">
+          <mxGeometry height="50" width="50" x="1080" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gw4_label" parent="lane_sys" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" value="Ports &gt; 0?" vertex="1">
+          <mxGeometry height="25" width="85" x="1063" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" value="Allocate Port&#xa;(AVAILABLE →&#xa;ASSIGNED)" vertex="1">
+          <mxGeometry height="66" width="140" x="1180" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=11;" value="Find or Create&#xa;Customer" vertex="1">
+          <mxGeometry height="60" width="140" x="1370" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="gw5" parent="lane_sys" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="X" vertex="1">
+          <mxGeometry height="50" width="50" x="1560" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gw5_label" parent="lane_sys" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" value="Already Has&#xa;Connection?" vertex="1">
+          <mxGeometry height="35" width="100" x="1535" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="Insert Connection&#xa;(ACTIVE,&#xa;billing_day=10)" vertex="1">
+          <mxGeometry height="70" width="150" x="1670" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=service;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="Generate First Bill&#xa;(Pro-rata +&#xa;18% GST)" vertex="1">
+          <mxGeometry height="70" width="150" x="1880" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" parent="lane_sys" style="shape=mxgraph.bpmn.task;taskMarker=send;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="Send Confirmation&#xa;Email&#xa;(ORDER_CONFIRMATION)" vertex="1">
+          <mxGeometry height="70" width="170" x="2090" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="end_ok" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="2330" y="85" as="geometry" />
+        </mxCell>
+        <mxCell id="err1" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="200" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="err1_l" parent="lane_sys" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" value="Salary below&#xa;eligibility" vertex="1">
+          <mxGeometry height="30" width="90" x="175" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="err2" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="495" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="err2_l" parent="lane_sys" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" value="Invalid plan" vertex="1">
+          <mxGeometry height="25" width="75" x="478" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="err3" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="795" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="err3_l" parent="lane_sys" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" value="Service not&#xa;available" vertex="1">
+          <mxGeometry height="30" width="80" x="775" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="err4" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="1085" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="err4_l" parent="lane_sys" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" value="No ports&#xa;available" vertex="1">
+          <mxGeometry height="30" width="75" x="1068" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="err5" parent="lane_sys" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;isLooping=0;isSequential=0;isCompensation=0;isCall=0;isInstantiating=0;isInterrupting=1;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="40" width="40" x="1565" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="err5_l" parent="lane_sys" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" value="Duplicate&#xa;connection" vertex="1">
+          <mxGeometry height="30" width="80" x="1545" y="392" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="lane_sys" source="gw1" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" target="t_plan" value="YES">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1b" edge="1" parent="lane_sys" source="t_plan" style="edgeStyle=orthogonalEdgeStyle;" target="gw2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="lane_sys" source="gw2" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" target="t_area" value="YES">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2b" edge="1" parent="lane_sys" source="t_area" style="edgeStyle=orthogonalEdgeStyle;" target="gw3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="lane_sys" source="gw3" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" target="t_ports" value="YES">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3b" edge="1" parent="lane_sys" source="t_ports" style="edgeStyle=orthogonalEdgeStyle;" target="gw4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="lane_sys" source="gw4" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" target="t2" value="YES">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="lane_sys" source="t2" style="edgeStyle=orthogonalEdgeStyle;" target="t3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="lane_sys" source="t3" style="edgeStyle=orthogonalEdgeStyle;" target="gw5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="lane_sys" source="gw5" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" target="t4" value="NO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="lane_sys" source="t4" style="edgeStyle=orthogonalEdgeStyle;" target="t5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="lane_sys" source="t5" style="edgeStyle=orthogonalEdgeStyle;" target="t6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="lane_sys" source="t6" style="edgeStyle=orthogonalEdgeStyle;" target="end_ok">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_err1" edge="1" parent="lane_sys" source="gw1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" target="err1" value="NO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_err2" edge="1" parent="lane_sys" source="gw2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" target="err2" value="NO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_err3" edge="1" parent="lane_sys" source="gw3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" target="err3" value="NO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_err4" edge="1" parent="lane_sys" source="gw4" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" target="err4" value="NO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_err5" edge="1" parent="lane_sys" source="gw5" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" target="err5" value="YES">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_db" parent="pool" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;" value="DATABASE (MySQL)" vertex="1">
+          <mxGeometry height="230" width="2500" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="db1" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;" value="plans" vertex="1">
+          <mxGeometry height="60" width="70" x="335" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" value="service_areas" vertex="1">
+          <mxGeometry height="60" width="90" x="620" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db3" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;" value="ports" vertex="1">
+          <mxGeometry height="60" width="70" x="1210" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db4" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" value="customers" vertex="1">
+          <mxGeometry height="60" width="90" x="1395" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db5" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" value="customer_&#xa;connections" vertex="1">
+          <mxGeometry height="60" width="90" x="1700" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db6" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" value="bills" vertex="1">
+          <mxGeometry height="60" width="70" x="1920" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db7" parent="lane_db" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" value="email_logs" vertex="1">
+          <mxGeometry height="60" width="90" x="2130" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="lane_email" parent="pool" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;" value="EMAIL SERVICE (Mailtrap)" vertex="1">
+          <mxGeometry height="200" width="2500" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="t_mail" parent="lane_email" style="shape=mxgraph.bpmn.task;taskMarker=send;isLooping=0;isSequential=0;isCompensation=0;isCall=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="Send to Customer Email:&#xa;&#xa;&quot;Your Aaha Telecom FTTH&#xa;Connection is Activated&quot;&#xa;(Plan, Speed, Price)" vertex="1">
+          <mxGeometry height="110" width="200" x="2080" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_box" parent="pool" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#CCCCCC;dashed=1;" value="" vertex="1">
+          <mxGeometry height="90" width="2500" y="1130" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_title" parent="pool" style="text;html=1;align=left;fontSize=11;fontStyle=1;fillColor=none;strokeColor=none;" value="BPMN LEGEND:" vertex="1">
+          <mxGeometry height="25" width="2500" y="1220" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_txt" parent="pool" style="text;html=1;align=left;fontSize=10;fillColor=none;strokeColor=none;whiteSpace=wrap;" value="○ Start Event     ◇+X Exclusive Gateway (diamond with X)     👤 User Task     ⚙️ Service Task (gear)     ✉️ Send Task (envelope)     ⬤ End Event (thick border)     ⬤ Error End (red)     ▭ Data Store (DB)" vertex="1">
+          <mxGeometry height="45" width="2500" y="1245" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

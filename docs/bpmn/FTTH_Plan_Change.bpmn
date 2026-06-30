@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_PlanChange"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_ConnNotActive" name="ConnectionNotActiveError" errorCode="ERR_CONN_NOT_ACTIVE" />
+
+  <bpmn:collaboration id="Collab_PlanChange">
+    <bpmn:participant id="Pool_PlanChange" name="Plan Change — POST /api/connections/{id}/change-plan" processRef="Process_PlanChange" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_PlanChange" name="Plan Change" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_PC">
+      <bpmn:lane id="Lane_CSR_PC" name="CSR">
+        <bpmn:flowNodeRef>Start_PC</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectPlan</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sys_PC" name="System (CustomerConnectionService.changePlan)">
+        <bpmn:flowNodeRef>Task_ValidatePlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckConn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_ConnActive</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_OltChanged</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReallocPort</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdatePlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DiffBill</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PlanEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_PC_OK</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_PC_Err</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_PC" name="CSR initiates plan change">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_SelectPlan" name="Select Connection &amp; New Plan (connectionId, newPlanId)">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_ValidatePlan" name="planService.getActivePlan(newPlanId)" camunda:expression="${true}">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_CheckConn" name="connectionRepo.findById(connectionId)" camunda:expression="${true}">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_ConnActive" name="Connection Active?">
+      <bpmn:incoming>F4</bpmn:incoming>
+      <bpmn:outgoing>F4_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F4_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="GW_OltChanged" name="OLT Type Changed? (oldPlan.oltType != newPlan.oltType)">
+      <bpmn:incoming>F4_Yes</bpmn:incoming>
+      <bpmn:outgoing>F5_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F5_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ReallocPort" name="Allocate new port (newOltType) + Release old port" camunda:expression="${true}">
+      <bpmn:incoming>F5_Yes</bpmn:incoming>
+      <bpmn:outgoing>F6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_UpdatePlan" name="connectionRepo.updatePlan(connectionId, newPlanId, userId)" camunda:expression="${true}">
+      <bpmn:incoming>F5_No</bpmn:incoming>
+      <bpmn:incoming>F6</bpmn:incoming>
+      <bpmn:outgoing>F7</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_DiffBill" name="billService.generatePlanChangeBill(customerId, connectionId, oldPlan, newPlan) — Pro-rata difference" camunda:expression="${true}">
+      <bpmn:incoming>F7</bpmn:incoming>
+      <bpmn:outgoing>F8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_PlanEmail" name="email.sendPlanChangeEmail(customer, connection, oldPlan, newPlan) — PLAN_CHANGE" camunda:expression="${true}">
+      <bpmn:incoming>F8</bpmn:incoming>
+      <bpmn:outgoing>F9</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_PC_OK" name="Plan Changed Successfully">
+      <bpmn:incoming>F9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_PC_Err" name="Connection not active or not found">
+      <bpmn:incoming>F4_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_PC" errorRef="Error_ConnNotActive" />
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="F1" sourceRef="Start_PC" targetRef="Task_SelectPlan" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_SelectPlan" targetRef="Task_ValidatePlan" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_ValidatePlan" targetRef="Task_CheckConn" />
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_CheckConn" targetRef="GW_ConnActive" />
+    <bpmn:sequenceFlow id="F4_Yes" name="YES" sourceRef="GW_ConnActive" targetRef="GW_OltChanged">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F4_No" name="NO" sourceRef="GW_ConnActive" targetRef="End_PC_Err">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F5_Yes" name="YES (type changed)" sourceRef="GW_OltChanged" targetRef="Task_ReallocPort">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${oltTypeChanged == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F5_No" name="NO (same type)" sourceRef="GW_OltChanged" targetRef="Task_UpdatePlan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${oltTypeChanged == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F6" sourceRef="Task_ReallocPort" targetRef="Task_UpdatePlan" />
+    <bpmn:sequenceFlow id="F7" sourceRef="Task_UpdatePlan" targetRef="Task_DiffBill" />
+    <bpmn:sequenceFlow id="F8" sourceRef="Task_DiffBill" targetRef="Task_PlanEmail" />
+    <bpmn:sequenceFlow id="F9" sourceRef="Task_PlanEmail" targetRef="End_PC_OK" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_PC">
+    <bpmndi:BPMNPlane id="BPMNPlane_PC" bpmnElement="Collab_PlanChange">
+      <bpmndi:BPMNShape id="Pool_PlanChange_di" bpmnElement="Pool_PlanChange" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1600" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSR_PC_di" bpmnElement="Lane_CSR_PC" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1570" height="130" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_PC_di" bpmnElement="Lane_Sys_PC" isHorizontal="true">
+        <dc:Bounds x="190" y="190" width="1570" height="370" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_PC_di" bpmnElement="Start_PC">
+        <dc:Bounds x="232" y="107" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectPlan_di" bpmnElement="Task_SelectPlan">
+        <dc:Bounds x="310" y="90" width="170" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidatePlan_di" bpmnElement="Task_ValidatePlan">
+        <dc:Bounds x="270" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckConn_di" bpmnElement="Task_CheckConn">
+        <dc:Bounds x="470" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_ConnActive_di" bpmnElement="GW_ConnActive" isMarkerVisible="true">
+        <dc:Bounds x="675" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_OltChanged_di" bpmnElement="GW_OltChanged" isMarkerVisible="true">
+        <dc:Bounds x="775" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReallocPort_di" bpmnElement="Task_ReallocPort">
+        <dc:Bounds x="860" y="350" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdatePlan_di" bpmnElement="Task_UpdatePlan">
+        <dc:Bounds x="1050" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DiffBill_di" bpmnElement="Task_DiffBill">
+        <dc:Bounds x="1250" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PlanEmail_di" bpmnElement="Task_PlanEmail">
+        <dc:Bounds x="1450" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_PC_OK_di" bpmnElement="End_PC_OK">
+        <dc:Bounds x="1652" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_PC_Err_di" bpmnElement="End_PC_Err">
+        <dc:Bounds x="682" y="462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

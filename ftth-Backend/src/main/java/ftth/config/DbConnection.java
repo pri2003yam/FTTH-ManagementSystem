@@ -6,9 +6,15 @@ import java.sql.SQLException;
 
 public final class DbConnection {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
-    private static final String USER = "root";
-    private static final String PASSWORD = "Aaha@6598";
+    private static final String URL = System.getenv("SPRING_DATASOURCE_URL") != null
+            ? System.getenv("SPRING_DATASOURCE_URL")
+            : "jdbc:mysql://localhost:3306/testdb";
+    private static final String USER = System.getenv("SPRING_DATASOURCE_USERNAME") != null
+            ? System.getenv("SPRING_DATASOURCE_USERNAME")
+            : "root";
+    private static final String PASSWORD = System.getenv("SPRING_DATASOURCE_PASSWORD") != null
+            ? System.getenv("SPRING_DATASOURCE_PASSWORD")
+            : "Aaha@6598";
 
     static {
         try {

@@ -35,7 +35,7 @@ export default function ChangePlanTab({ connectionId, onDone }: { connectionId: 
     setMsg("");
     setError("");
     try {
-      await api.post(ENDPOINTS.CONNECTION_CHANGE_PLAN(connectionId), { planId: selected.planId });
+      await api.post(ENDPOINTS.CONNECTION_CHANGE_PLAN(connectionId), { connectionId, planId: selected.planId });
       setMsg("Plan changed successfully.");
       setSelected(null);
       setTimeout(onDone, 1000);
