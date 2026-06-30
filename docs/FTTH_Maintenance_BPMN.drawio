@@ -1,0 +1,196 @@
+<mxfile host="app.diagrams.net" modified="2024-06-12T00:00:00.000Z" agent="Kiro" version="22.1.2">
+  <diagram name="Maintenance Operations — Aaha Telecom" id="ftth-maintenance">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL -->
+        <mxCell id="pool" value="Maintenance Operations — /api/maintenance/{component}/{id}/start|end" style="shape=pool;startSize=30;horizontal=1;childLayout=stackLayout;horizontalStack=0;resizeParent=1;collapsible=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="2100" height="1250" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: MAINT USER -->
+        <mxCell id="lane_maint" value="MAINT USER" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="30" width="2100" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=general;outline=standard;fillColor=#67AB9F;strokeColor=#2D7600;" vertex="1" parent="lane_maint">
+          <mxGeometry x="60" y="80" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_select" value="Select Component&#xa;for Maintenance&#xa;(Port / Splitter / OLT)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="lane_maint">
+          <mxGeometry x="150" y="55" width="190" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Gateway: Which component? -->
+        <mxCell id="gw_comp" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_maint">
+          <mxGeometry x="410" y="75" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_comp_l" value="Component&#xa;Type?" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="lane_maint">
+          <mxGeometry x="393" y="43" width="85" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e0" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="t_select" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_select" target="gw_comp" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM (Port) -->
+        <mxCell id="lane_port" value="PORT MAINTENANCE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="230" width="2100" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_port_cust" value="Get Customer&#xa;on Port&#xa;repo.getCustomerOnPort()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_port">
+          <mxGeometry x="550" y="60" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_port_set" value="Set Port Status&#xa;→ FAULTY&#xa;repo.setPortMaintenance()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_port">
+          <mxGeometry x="790" y="60" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gw_port_cust" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_port">
+          <mxGeometry x="1040" y="70" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_port_l" value="Customer&#xa;on port?" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_port">
+          <mxGeometry x="1020" y="40" width="90" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_port_email" value="Send OLT_ALERT&#xa;Email to Customer" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_port">
+          <mxGeometry x="1160" y="60" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_port" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_port">
+          <mxGeometry x="1400" y="75" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ep1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_port_cust" target="t_port_set" parent="lane_port">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_port_set" target="gw_port_cust" parent="lane_port">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3" value="YES" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw_port_cust" target="t_port_email" parent="lane_port">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ep3b" value="NO" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw_port_cust" target="end_port" parent="lane_port">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1065" y="150" />
+              <mxPoint x="1420" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ep4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_port_email" target="end_port" parent="lane_port">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM (Splitter) -->
+        <mxCell id="lane_splitter" value="SPLITTER MAINTENANCE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="430" width="2100" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_spl_cust" value="Get ALL Customers&#xa;on Splitter&#xa;repo.getCustomers&#xa;OnSplitter()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_splitter">
+          <mxGeometry x="550" y="55" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_spl_set" value="Set ALL Ports&#xa;on Splitter → FAULTY&#xa;repo.setSplitter&#xa;Maintenance()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_splitter">
+          <mxGeometry x="790" y="55" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_spl_email" value="Send OLT_ALERT&#xa;Email to EACH&#xa;affected Customer" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_splitter">
+          <mxGeometry x="1050" y="55" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_spl" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_splitter">
+          <mxGeometry x="1300" y="75" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="es1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_spl_cust" target="t_spl_set" parent="lane_splitter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_spl_set" target="t_spl_email" parent="lane_splitter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="es3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_spl_email" target="end_spl" parent="lane_splitter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM (OLT) -->
+        <mxCell id="lane_olt" value="OLT MAINTENANCE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="630" width="2100" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_olt_cust" value="Get ALL Customers&#xa;on OLT&#xa;repo.getCustomers&#xa;OnOlt()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_olt">
+          <mxGeometry x="550" y="55" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_olt_set" value="Set ALL Ports&#xa;on OLT → FAULTY&#xa;repo.setOlt&#xa;Maintenance()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_olt">
+          <mxGeometry x="790" y="55" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_olt_email" value="Send OLT_ALERT&#xa;Email to EACH&#xa;affected Customer" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_olt">
+          <mxGeometry x="1050" y="55" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_olt" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_olt">
+          <mxGeometry x="1300" y="75" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eo1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_olt_cust" target="t_olt_set" parent="lane_olt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eo2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_olt_set" target="t_olt_email" parent="lane_olt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eo3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_olt_email" target="end_olt" parent="lane_olt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: END MAINTENANCE -->
+        <mxCell id="lane_end" value="END MAINTENANCE (Clear)" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="830" width="2100" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_end_start" value="MAINT User triggers&#xa;End Maintenance&#xa;(/end endpoint)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="lane_end">
+          <mxGeometry x="550" y="50" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_end_clear" value="Clear Port Status&#xa;→ AVAILABLE&#xa;(clearPort/Splitter/&#xa;OltMaintenance)" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_end">
+          <mxGeometry x="800" y="45" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_clear" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_end">
+          <mxGeometry x="1060" y="65" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ec1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_end_start" target="t_end_clear" parent="lane_end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_end_clear" target="end_clear" parent="lane_end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: DATABASE -->
+        <mxCell id="lane_db" value="DATABASE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="1010" width="2100" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db1" value="ports&#xa;(port_status)" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="850" y="40" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="email_logs&#xa;(OLT_ALERT)" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="1100" y="40" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- LEGEND -->
+        <mxCell id="leg" value="Components: Port (single) | Splitter (all ports) | OLT (all ports on all splitters)    |    Port Status: AVAILABLE ↔ FAULTY    |    Email: OLT_ALERT type" style="text;html=1;align=left;fontSize=10;fillColor=none;strokeColor=none;fontStyle=2;" vertex="1" parent="pool">
+          <mxGeometry x="50" y="1180" width="800" height="25" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

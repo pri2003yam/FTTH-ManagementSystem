@@ -185,23 +185,48 @@ public class DashboardApiController {
     // MAINTENANCE DASHBOARD
     // ══════════════════════════════════════════════
     @GetMapping("/maint")
-    public ResponseEntity<Map<String, Object>> maintDashboard() {
+    public ResponseEntity<Map<String, Object>> maintDashboard(@RequestParam(value = "username", required = false) String username) {
         Map<String, Object> result = new LinkedHashMap<>();
 
         try (Connection con = DbConnection.getConnection()) {
 
-            // Down connections (disconnected recently = potential issues)
-            result.put("downConnections", countQuery(con,
-                "SELECT COUNT(*) FROM customer_connections WHERE connection_status = 'DISCONNECTED' AND disconnected_on >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"));
+            // Pending tasks: work requests in NEW + those assigned to this user in ACCEPTED/IN_PROGRESS
+            int pendingTasks;
+            if (username != null && !username.isEmpty()) {
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT COUNT(*) FROM work_requests WHERE status IN ('NEW') " +
+                        "OR (assigned_to = ? AND status IN ('ACCEPTED','IN_PROGRESS'))")) {
+                    ps.setString(1, username);
+                    ResultSet rs = ps.executeQuery();
+                    rs.next();
+                    pendingTasks = rs.getInt(1);
+                }
+            } else {
+                pendingTasks = countQuery(con, "SELECT COUNT(*) FROM work_requests WHERE status IN ('NEW','ACCEPTED','IN_PROGRESS')");
+            }
+            result.put("pendingTasks", pendingTasks);
+
+            // Resolved today: work requests resolved/closed today
+            int resolvedToday;
+            if (username != null && !username.isEmpty()) {
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT COUNT(*) FROM work_requests WHERE assigned_to = ? AND status IN ('RESOLVED','CLOSED') AND DATE(updated_at) = CURDATE()")) {
+                    ps.setString(1, username);
+                    ResultSet rs = ps.executeQuery();
+                    rs.next();
+                    resolvedToday = rs.getInt(1);
+                }
+            } else {
+                resolvedToday = countQuery(con, "SELECT COUNT(*) FROM work_requests WHERE status IN ('RESOLVED','CLOSED') AND DATE(updated_at) = CURDATE()");
+            }
+            result.put("resolvedToday", resolvedToday);
 
             // Active issues — OLTs at high capacity
             List<CapacityRow> rows = capacityRepo.fetchAllCapacity();
-            int activeIssues = 0;
             List<Map<String, Object>> issues = new ArrayList<>();
 
             for (CapacityRow r : rows) {
                 if (r.getUtilization() >= 80) {
-                    activeIssues++;
                     Map<String, Object> issue = new LinkedHashMap<>();
                     issue.put("id", r.getOltId());
                     issue.put("area", "Pincode " + r.getPincode());
@@ -212,9 +237,7 @@ public class DashboardApiController {
                 }
             }
 
-            result.put("activeIssues", activeIssues);
-            result.put("pendingTasks", activeIssues); // same as active issues for now
-            result.put("resolvedToday", 0); // placeholder
+            result.put("activeIssues", issues.size());
             result.put("issues", issues);
 
         } catch (Exception e) {

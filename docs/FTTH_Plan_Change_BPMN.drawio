@@ -1,0 +1,157 @@
+<mxfile host="app.diagrams.net" modified="2024-06-12T00:00:00.000Z" agent="Kiro" version="22.1.2">
+  <diagram name="Plan Change — Aaha Telecom" id="ftth-plan-change">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL -->
+        <mxCell id="pool" value="Plan Change — POST /api/connections/{id}/change-plan" style="shape=pool;startSize=30;horizontal=1;childLayout=stackLayout;horizontalStack=0;resizeParent=1;collapsible=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="2100" height="1100" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: CSR -->
+        <mxCell id="lane_csr" value="CSR" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="30" width="2100" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=general;outline=standard;fillColor=#67AB9F;strokeColor=#2D7600;" vertex="1" parent="lane_csr">
+          <mxGeometry x="60" y="70" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t1" value="Select Connection&#xa;&amp; New Plan&#xa;(connectionId, newPlanId)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="lane_csr">
+          <mxGeometry x="150" y="50" width="190" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_done" value="Plan Changed&#xa;Successfully ✓" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="lane_csr">
+          <mxGeometry x="1870" y="55" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e0" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="t1" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM -->
+        <mxCell id="lane_sys" value="SYSTEM" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="210" width="2100" height="450" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: Validate new plan -->
+        <mxCell id="t_validate" value="Validate New Plan&#xa;planService&#xa;.getActivePlan(newPlanId)" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="150" y="70" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2: Check connection active -->
+        <mxCell id="gw1" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_sys">
+          <mxGeometry x="380" y="80" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw1_l" value="Connection&#xa;Active?" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="lane_sys">
+          <mxGeometry x="358" y="45" width="95" height="33" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3: Check OLT type change -->
+        <mxCell id="gw2" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_sys">
+          <mxGeometry x="500" y="80" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw2_l" value="OLT Type&#xa;Changed?" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="lane_sys">
+          <mxGeometry x="478" y="45" width="95" height="33" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3a: Reallocate port -->
+        <mxCell id="t_realloc" value="Allocate New Port&#xa;+ Release Old Port" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="600" y="170" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4: Update plan -->
+        <mxCell id="t_update" value="Update Connection&#xa;Plan ID&#xa;connectionRepo&#xa;.updatePlan()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="830" y="70" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5: Generate differential bill -->
+        <mxCell id="t_bill" value="Generate Differential&#xa;Bill (Pro-rata&#xa;price difference)" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1060" y="70" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Step 6: Send email -->
+        <mxCell id="t_email" value="Send PLAN_CHANGE&#xa;Email to Customer" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1310" y="70" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- End -->
+        <mxCell id="end_ok" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1540" y="85" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Error -->
+        <mxCell id="err1" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="lane_sys">
+          <mxGeometry x="385" y="330" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="err1_l" value="Connection not&#xa;active or not found" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_sys">
+          <mxGeometry x="355" y="372" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_validate" target="gw1" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="YES" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw1" target="gw2" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_err" value="NO" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="gw1" target="err1" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_yes" value="YES" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw2" target="t_realloc" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3_no" value="NO" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw2" target="t_update" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3b" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_realloc" target="t_update" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_update" target="t_bill" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_bill" target="t_email" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_email" target="end_ok" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: DATABASE -->
+        <mxCell id="lane_db" value="DATABASE (MySQL)" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="660" width="2100" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db1" value="ports" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="640" y="60" width="70" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="customer_&#xa;connections" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="870" y="60" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db3" value="bills" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="1110" y="60" width="70" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db4" value="email_logs" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="1350" y="60" width="90" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: EMAIL -->
+        <mxCell id="lane_email" value="EMAIL SERVICE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="840" width="2100" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_mail" value="&quot;Plan Updated - Aaha Telecom&quot;&#xa;Old Plan → New Plan&#xa;Speed, Monthly Price" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="lane_email">
+          <mxGeometry x="1290" y="40" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- LEGEND -->
+        <mxCell id="leg" value="LEGEND:  ○ Start    ◇+X Exclusive Gateway    👤 User Task    ⚙️ Service Task    ✉️ Send Task    ⬤ End    ⬤ Error End (red)    ▭ Data Store" style="text;html=1;align=left;fontSize=10;fillColor=none;strokeColor=none;whiteSpace=wrap;" vertex="1" parent="pool">
+          <mxGeometry x="50" y="1010" width="900" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

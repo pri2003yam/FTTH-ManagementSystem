@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { sidebarItems } from "../layout/sidebarConfig";
 import Button from "../ui/Button";
 import Badge from "../ui/Badge";
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const { user, role, logout } = useAuth();
@@ -16,6 +17,7 @@ export default function Header() {
       <div className="app-header__actions">
         {user && (
           <>
+            <NotificationBell />
             <span className="app-header__user">{user}</span>
             <Badge label={role} variant="neutral" />
             <Button variant="danger" onClick={logout} className="text-xs px-3 py-1">Logout</Button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { inventoryService } from "../../services/inventoryService";
-import type { OltInventoryDTO, InventoryConfig } from "../../types/models";
+import type { OltInventoryDTO } from "../../types/models";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Table from "../../components/ui/Table";

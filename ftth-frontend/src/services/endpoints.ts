@@ -19,15 +19,15 @@ export const ENDPOINTS = {
   // Connections
   CONNECTIONS: "/api/connections",
   CONNECTION_BY_ID: (id: number) => `/api/connections/${id}`,
-  CONNECTION_NEW_INSTALL: "/api/connections/new-install",
+  CONNECTION_NEW_INSTALL: "/api/bpmn/new-connection",
   CONNECTION_ACTIVE: "/api/connections/active",
   CONNECTION_DISCONNECTED: "/api/connections/disconnected",
   CONNECTION_REACTIVATE: (id: number) => `/api/connections/${id}/reactivate`,
   CONNECTION_AVAILABLE_PLANS: (id: number) => `/api/connections/${id}/available-plans`,
-  CONNECTION_CHANGE_PLAN: (id: number) => `/api/connections/${id}/change-plan`,
+  CONNECTION_CHANGE_PLAN: (id: number) => `/api/bpmn/change-plan`,
   CONNECTION_CHECK_MOVE: (id: number, pincode: string) => `/api/connections/${id}/check-move?pincode=${pincode}`,
-  CONNECTION_MOVE: (id: number) => `/api/connections/${id}/move`,
-  CONNECTION_DISCONNECT: (id: number) => `/api/connections/${id}/disconnect`,
+  CONNECTION_MOVE: (id: number) => `/api/bpmn/move`,
+  CONNECTION_DISCONNECT: (id: number) => `/api/bpmn/disconnect`,
 
   // Customers
   CUSTOMERS: "/api/customers",
@@ -64,4 +64,12 @@ export const ENDPOINTS = {
   MAINTENANCE_SPLITTER_END: (splitterId: number) => `/api/maintenance/splitter/${splitterId}/end`,
   MAINTENANCE_OLT_START: (oltId: number) => `/api/maintenance/olt/${oltId}/start`,
   MAINTENANCE_OLT_END: (oltId: number) => `/api/maintenance/olt/${oltId}/end`,
+
+  // Work Requests
+  WORK_REQUESTS: "/api/work-requests",
+  WORK_REQUESTS_OPEN: "/api/work-requests/open",
+  WORK_REQUEST_BY_ID: (id: number) => `/api/work-requests/${id}`,
+  WORK_REQUEST_TRANSITION: (id: number) => `/api/work-requests/${id}/transition`,
+  WORK_REQUEST_NOTIFICATIONS: "/api/work-requests/notifications",
+  WORK_REQUEST_NOTIFICATION_READ: (id: number) => `/api/work-requests/notifications/${id}/read`,
 };

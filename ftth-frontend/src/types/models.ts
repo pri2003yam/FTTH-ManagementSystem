@@ -151,3 +151,31 @@ export interface AddOltResponse {
   oltCode: string;
   message: string;
 }
+
+// ===========================
+// Work Request Models
+// ===========================
+
+export type WorkRequestStatus = "NEW" | "ACCEPTED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+export type WorkRequestActionType = "ADD_OLT" | "REMOVE_OLT" | "ADD_SPLITTER" | "REMOVE_SPLITTER";
+
+export interface WorkRequest {
+  wrId: number;
+  pincode: string;
+  oltType: string;
+  actionType: WorkRequestActionType;
+  status: WorkRequestStatus;
+  raisedBy: string;
+  assignedTo: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WRNotification {
+  notificationId: number;
+  wrId: number;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}

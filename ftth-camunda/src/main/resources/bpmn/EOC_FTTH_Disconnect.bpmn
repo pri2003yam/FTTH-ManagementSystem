@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_EOC_Disconnect"
+                  targetNamespace="http://aaha-telecom.com/ftth/eoc"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_CartCreationFailed" name="Cart Creation Failed" errorCode="ERR_CART_CREATION_FAILED" />
+  <bpmn:error id="Error_CartSubmissionFailed" name="Cart Submission Failed" errorCode="ERR_CART_SUBMISSION_FAILED" />
+  <bpmn:error id="Error_ProductTerminationFailed" name="Product Termination Failed" errorCode="ERR_PRODUCT_TERMINATION_FAILED" />
+
+  <bpmn:process id="EOC_FTTH_Disconnect" name="EOC FTTH Disconnect" isExecutable="true">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_Disconnect" name="Disconnect Request Received">
+      <bpmn:outgoing>Flow_Start_to_CreateCart</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task: Create Disconnect Cart -->
+    <bpmn:serviceTask id="Task_CreateDisconnectCart" name="Create Disconnect Cart"
+                      camunda:delegateExpression="${createDisconnectCartDelegate}">
+      <bpmn:incoming>Flow_Start_to_CreateCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateCart_to_SubmitCart</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Create Cart -->
+    <bpmn:boundaryEvent id="BoundaryError_CreateCart" name="Cart Creation Error"
+                        attachedToRef="Task_CreateDisconnectCart">
+      <bpmn:outgoing>Flow_CreateCartError_to_ErrorEnd1</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorDef_CreateCart" errorRef="Error_CartCreationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Submit Cart -->
+    <bpmn:serviceTask id="Task_SubmitCart" name="Submit Cart"
+                      camunda:delegateExpression="${submitCartDelegate}">
+      <bpmn:incoming>Flow_CreateCart_to_SubmitCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitCart_to_TerminateProduct</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Submit Cart -->
+    <bpmn:boundaryEvent id="BoundaryError_SubmitCart" name="Cart Submission Error"
+                        attachedToRef="Task_SubmitCart">
+      <bpmn:outgoing>Flow_SubmitCartError_to_ErrorEnd2</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorDef_SubmitCart" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Terminate Product -->
+    <bpmn:serviceTask id="Task_TerminateProduct" name="Terminate Product"
+                      camunda:delegateExpression="${terminateProductDelegate}">
+      <bpmn:incoming>Flow_SubmitCart_to_TerminateProduct</bpmn:incoming>
+      <bpmn:outgoing>Flow_TerminateProduct_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Terminate Product -->
+    <bpmn:boundaryEvent id="BoundaryError_TerminateProduct" name="Product Termination Error"
+                        attachedToRef="Task_TerminateProduct">
+      <bpmn:outgoing>Flow_TerminateProductError_to_ErrorEnd3</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorDef_TerminateProduct" errorRef="Error_ProductTerminationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Success End Event -->
+    <bpmn:endEvent id="EndEvent_Success" name="Disconnect Completed Successfully">
+      <bpmn:incoming>Flow_TerminateProduct_to_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Creation Failed -->
+    <bpmn:endEvent id="EndEvent_CartCreationFailed" name="Cart Creation Failed">
+      <bpmn:incoming>Flow_CreateCartError_to_ErrorEnd1</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEndDef_CartCreation" errorRef="Error_CartCreationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Submission Failed -->
+    <bpmn:endEvent id="EndEvent_CartSubmissionFailed" name="Cart Submission Failed">
+      <bpmn:incoming>Flow_SubmitCartError_to_ErrorEnd2</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEndDef_CartSubmission" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Product Termination Failed -->
+    <bpmn:endEvent id="EndEvent_ProductTerminationFailed" name="Product Termination Failed">
+      <bpmn:incoming>Flow_TerminateProductError_to_ErrorEnd3</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEndDef_ProductTermination" errorRef="Error_ProductTerminationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows: Happy Path -->
+    <bpmn:sequenceFlow id="Flow_Start_to_CreateCart" sourceRef="StartEvent_Disconnect" targetRef="Task_CreateDisconnectCart" />
+    <bpmn:sequenceFlow id="Flow_CreateCart_to_SubmitCart" sourceRef="Task_CreateDisconnectCart" targetRef="Task_SubmitCart" />
+    <bpmn:sequenceFlow id="Flow_SubmitCart_to_TerminateProduct" sourceRef="Task_SubmitCart" targetRef="Task_TerminateProduct" />
+    <bpmn:sequenceFlow id="Flow_TerminateProduct_to_End" sourceRef="Task_TerminateProduct" targetRef="EndEvent_Success" />
+
+    <!-- Sequence Flows: Error Paths -->
+    <bpmn:sequenceFlow id="Flow_CreateCartError_to_ErrorEnd1" sourceRef="BoundaryError_CreateCart" targetRef="EndEvent_CartCreationFailed" />
+    <bpmn:sequenceFlow id="Flow_SubmitCartError_to_ErrorEnd2" sourceRef="BoundaryError_SubmitCart" targetRef="EndEvent_CartSubmissionFailed" />
+    <bpmn:sequenceFlow id="Flow_TerminateProductError_to_ErrorEnd3" sourceRef="BoundaryError_TerminateProduct" targetRef="EndEvent_ProductTerminationFailed" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_EOC_Disconnect">
+    <bpmndi:BPMNPlane id="BPMNPlane_EOC_Disconnect" bpmnElement="EOC_FTTH_Disconnect">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_Disconnect_di" bpmnElement="StartEvent_Disconnect">
+        <dc:Bounds x="180" y="200" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="156" y="243" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Create Disconnect Cart -->
+      <bpmndi:BPMNShape id="Task_CreateDisconnectCart_di" bpmnElement="Task_CreateDisconnectCart">
+        <dc:Bounds x="280" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Create Cart -->
+      <bpmndi:BPMNShape id="BoundaryError_CreateCart_di" bpmnElement="BoundaryError_CreateCart">
+        <dc:Bounds x="312" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Submit Cart -->
+      <bpmndi:BPMNShape id="Task_SubmitCart_di" bpmnElement="Task_SubmitCart">
+        <dc:Bounds x="450" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Submit Cart -->
+      <bpmndi:BPMNShape id="BoundaryError_SubmitCart_di" bpmnElement="BoundaryError_SubmitCart">
+        <dc:Bounds x="482" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Terminate Product -->
+      <bpmndi:BPMNShape id="Task_TerminateProduct_di" bpmnElement="Task_TerminateProduct">
+        <dc:Bounds x="620" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Terminate Product -->
+      <bpmndi:BPMNShape id="BoundaryError_TerminateProduct_di" bpmnElement="BoundaryError_TerminateProduct">
+        <dc:Bounds x="652" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Success End Event -->
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="792" y="200" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="768" y="243" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Events -->
+      <bpmndi:BPMNShape id="EndEvent_CartCreationFailed_di" bpmnElement="EndEvent_CartCreationFailed">
+        <dc:Bounds x="312" y="340" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="288" y="383" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_CartSubmissionFailed_di" bpmnElement="EndEvent_CartSubmissionFailed">
+        <dc:Bounds x="482" y="340" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="458" y="383" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_ProductTerminationFailed_di" bpmnElement="EndEvent_ProductTerminationFailed">
+        <dc:Bounds x="652" y="340" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="628" y="383" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges: Happy Path -->
+      <bpmndi:BPMNEdge id="Flow_Start_to_CreateCart_di" bpmnElement="Flow_Start_to_CreateCart">
+        <di:waypoint x="216" y="218" />
+        <di:waypoint x="280" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CreateCart_to_SubmitCart_di" bpmnElement="Flow_CreateCart_to_SubmitCart">
+        <di:waypoint x="380" y="218" />
+        <di:waypoint x="450" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_SubmitCart_to_TerminateProduct_di" bpmnElement="Flow_SubmitCart_to_TerminateProduct">
+        <di:waypoint x="550" y="218" />
+        <di:waypoint x="620" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_TerminateProduct_to_End_di" bpmnElement="Flow_TerminateProduct_to_End">
+        <di:waypoint x="720" y="218" />
+        <di:waypoint x="792" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Sequence Flow Edges: Error Paths -->
+      <bpmndi:BPMNEdge id="Flow_CreateCartError_to_ErrorEnd1_di" bpmnElement="Flow_CreateCartError_to_ErrorEnd1">
+        <di:waypoint x="330" y="276" />
+        <di:waypoint x="330" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_SubmitCartError_to_ErrorEnd2_di" bpmnElement="Flow_SubmitCartError_to_ErrorEnd2">
+        <di:waypoint x="500" y="276" />
+        <di:waypoint x="500" y="340" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_TerminateProductError_to_ErrorEnd3_di" bpmnElement="Flow_TerminateProductError_to_ErrorEnd3">
+        <di:waypoint x="670" y="276" />
+        <di:waypoint x="670" y="340" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

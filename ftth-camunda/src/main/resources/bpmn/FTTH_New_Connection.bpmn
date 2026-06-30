@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_1"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <bpmn:error id="Error_Salary" name="SalaryError" errorCode="ERR_SALARY" />
+  <bpmn:error id="Error_Plan" name="PlanError" errorCode="ERR_PLAN" />
+  <bpmn:error id="Error_Area" name="AreaError" errorCode="ERR_AREA" />
+  <bpmn:error id="Error_Ports" name="PortsError" errorCode="ERR_PORTS" />
+  <bpmn:error id="Error_Duplicate" name="DuplicateError" errorCode="ERR_DUPLICATE" />
+
+  <bpmn:collaboration id="Collaboration_1">
+    <bpmn:participant id="Participant_Pool" name="New Customer FTTH Connection — Aaha Telecom" processRef="Process_NewConnection" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_NewConnection" name="New Connection" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_CSR" name="CSR">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterDetails</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReceiveResponse</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="System">
+        <bpmn:flowNodeRef>Gateway_Salary</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FindPlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Plan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FindArea</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Area</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckPorts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Ports</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateConnection</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Duplicate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Success</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Err_Salary</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Err_Plan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Err_Area</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Err_Ports</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Err_Duplicate</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- START -->
+    <bpmn:startEvent id="StartEvent_1" name="Customer requests connection">
+      <bpmn:outgoing>Flow_Start_Enter</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- USER TASK: CSR enters details -->
+    <bpmn:userTask id="Task_EnterDetails" name="Enter Customer Details" camunda:assignee="admin">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="customerName" label="Customer Name" type="string" />
+          <camunda:formField id="email" label="Email" type="string" />
+          <camunda:formField id="salary" label="Salary" type="long" />
+          <camunda:formField id="pincode" label="Pincode" type="long" />
+          <camunda:formField id="planId" label="Plan ID" type="long" />
+          <camunda:formField id="oltType" label="OLT Type (OLT300/OLT500)" type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Start_Enter</bpmn:incoming>
+      <bpmn:outgoing>Flow_Enter_Salary</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- GATEWAY: Salary > 30000? -->
+    <bpmn:exclusiveGateway id="Gateway_Salary" name="Salary &gt; 30,000?">
+      <bpmn:incoming>Flow_Enter_Salary</bpmn:incoming>
+      <bpmn:outgoing>Flow_Salary_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Salary_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- SERVICE TASK: Find Plan (calls backend API) -->
+    <bpmn:serviceTask id="Task_FindPlan" name="Validate Plan" camunda:delegateExpression="${findPlanDelegate}">
+      <bpmn:incoming>Flow_Salary_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Plan_GW</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- GATEWAY: Plan valid? -->
+    <bpmn:exclusiveGateway id="Gateway_Plan" name="Plan Valid?">
+      <bpmn:incoming>Flow_Plan_GW</bpmn:incoming>
+      <bpmn:outgoing>Flow_Plan_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Plan_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- SERVICE TASK: Find Service Area -->
+    <bpmn:serviceTask id="Task_FindArea" name="Check Service Area" camunda:delegateExpression="${findServiceAreaDelegate}">
+      <bpmn:incoming>Flow_Plan_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Area_GW</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- GATEWAY: Area active? -->
+    <bpmn:exclusiveGateway id="Gateway_Area" name="Area Active?">
+      <bpmn:incoming>Flow_Area_GW</bpmn:incoming>
+      <bpmn:outgoing>Flow_Area_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Area_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- SERVICE TASK: Check Ports -->
+    <bpmn:serviceTask id="Task_CheckPorts" name="Check Port Availability" camunda:delegateExpression="${checkPortsDelegate}">
+      <bpmn:incoming>Flow_Area_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Ports_GW</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- GATEWAY: Ports > 0? -->
+    <bpmn:exclusiveGateway id="Gateway_Ports" name="Ports Available?">
+      <bpmn:incoming>Flow_Ports_GW</bpmn:incoming>
+      <bpmn:outgoing>Flow_Ports_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Ports_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- SERVICE TASK: Create Connection (calls POST /api/connections/new-install) -->
+    <bpmn:serviceTask id="Task_CreateConnection" name="Create Connection (Allocate + Bill + Email)" camunda:delegateExpression="${createConnectionDelegate}">
+      <bpmn:incoming>Flow_Ports_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Create_GW</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- GATEWAY: Connection created successfully? -->
+    <bpmn:exclusiveGateway id="Gateway_Duplicate" name="Connection Created?">
+      <bpmn:incoming>Flow_Create_GW</bpmn:incoming>
+      <bpmn:outgoing>Flow_Dup_No</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Dup_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- USER TASK: CSR sees result -->
+    <bpmn:userTask id="Task_ReceiveResponse" name="View Connection Result" camunda:assignee="admin">
+      <bpmn:incoming>Flow_Dup_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Response_End</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- END: Success -->
+    <bpmn:endEvent id="EndEvent_Success" name="Done">
+      <bpmn:incoming>Flow_Response_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ERROR ENDS -->
+    <bpmn:endEvent id="EndEvent_Err_Salary" name="Salary too low">
+      <bpmn:incoming>Flow_Salary_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_Salary" errorRef="Error_Salary" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Err_Plan" name="Invalid plan">
+      <bpmn:incoming>Flow_Plan_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_Plan" errorRef="Error_Plan" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Err_Area" name="Area not available">
+      <bpmn:incoming>Flow_Area_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_Area" errorRef="Error_Area" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Err_Ports" name="No ports">
+      <bpmn:incoming>Flow_Ports_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_Ports" errorRef="Error_Ports" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Err_Duplicate" name="Already has connection">
+      <bpmn:incoming>Flow_Dup_Yes</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_Dup" errorRef="Error_Duplicate" />
+    </bpmn:endEvent>
+
+    <!-- SEQUENCE FLOWS -->
+    <bpmn:sequenceFlow id="Flow_Start_Enter" sourceRef="StartEvent_1" targetRef="Task_EnterDetails" />
+    <bpmn:sequenceFlow id="Flow_Enter_Salary" sourceRef="Task_EnterDetails" targetRef="Gateway_Salary" />
+    <bpmn:sequenceFlow id="Flow_Salary_Yes" name="YES" sourceRef="Gateway_Salary" targetRef="Task_FindPlan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${salary &gt; 30000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Salary_No" name="NO" sourceRef="Gateway_Salary" targetRef="EndEvent_Err_Salary">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${salary &lt;= 30000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Plan_GW" sourceRef="Task_FindPlan" targetRef="Gateway_Plan" />
+    <bpmn:sequenceFlow id="Flow_Plan_Yes" name="YES" sourceRef="Gateway_Plan" targetRef="Task_FindArea">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Plan_No" name="NO" sourceRef="Gateway_Plan" targetRef="EndEvent_Err_Plan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Area_GW" sourceRef="Task_FindArea" targetRef="Gateway_Area" />
+    <bpmn:sequenceFlow id="Flow_Area_Yes" name="YES" sourceRef="Gateway_Area" targetRef="Task_CheckPorts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Area_No" name="NO" sourceRef="Gateway_Area" targetRef="EndEvent_Err_Area">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Ports_GW" sourceRef="Task_CheckPorts" targetRef="Gateway_Ports" />
+    <bpmn:sequenceFlow id="Flow_Ports_Yes" name="YES" sourceRef="Gateway_Ports" targetRef="Task_CreateConnection">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts &gt; 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Ports_No" name="NO" sourceRef="Gateway_Ports" targetRef="EndEvent_Err_Ports">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts &lt;= 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Create_GW" sourceRef="Task_CreateConnection" targetRef="Gateway_Duplicate" />
+    <bpmn:sequenceFlow id="Flow_Dup_No" name="Success" sourceRef="Gateway_Duplicate" targetRef="Task_ReceiveResponse">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${hasActiveConnection == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Dup_Yes" name="Failed" sourceRef="Gateway_Duplicate" targetRef="EndEvent_Err_Duplicate">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${hasActiveConnection == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Response_End" sourceRef="Task_ReceiveResponse" targetRef="EndEvent_Success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+      <bpmndi:BPMNShape id="Participant_Pool_di" bpmnElement="Participant_Pool" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1800" height="550" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSR_di" bpmnElement="Lane_CSR" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1770" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="190" y="210" width="1770" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="232" y="117" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EnterDetails_di" bpmnElement="Task_EnterDetails">
+        <dc:Bounds x="310" y="95" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Salary_di" bpmnElement="Gateway_Salary" isMarkerVisible="true">
+        <dc:Bounds x="345" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FindPlan_di" bpmnElement="Task_FindPlan">
+        <dc:Bounds x="440" y="270" width="130" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Plan_di" bpmnElement="Gateway_Plan" isMarkerVisible="true">
+        <dc:Bounds x="615" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FindArea_di" bpmnElement="Task_FindArea">
+        <dc:Bounds x="710" y="270" width="140" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Area_di" bpmnElement="Gateway_Area" isMarkerVisible="true">
+        <dc:Bounds x="895" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckPorts_di" bpmnElement="Task_CheckPorts">
+        <dc:Bounds x="990" y="270" width="140" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Ports_di" bpmnElement="Gateway_Ports" isMarkerVisible="true">
+        <dc:Bounds x="1175" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateConnection_di" bpmnElement="Task_CreateConnection">
+        <dc:Bounds x="1270" y="270" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Duplicate_di" bpmnElement="Gateway_Duplicate" isMarkerVisible="true">
+        <dc:Bounds x="1475" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReceiveResponse_di" bpmnElement="Task_ReceiveResponse">
+        <dc:Bounds x="1600" y="95" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1812" y="117" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Err_Salary_di" bpmnElement="EndEvent_Err_Salary">
+        <dc:Bounds x="352" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Err_Plan_di" bpmnElement="EndEvent_Err_Plan">
+        <dc:Bounds x="622" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Err_Area_di" bpmnElement="EndEvent_Err_Area">
+        <dc:Bounds x="902" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Err_Ports_di" bpmnElement="EndEvent_Err_Ports">
+        <dc:Bounds x="1182" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Err_Duplicate_di" bpmnElement="EndEvent_Err_Duplicate">
+        <dc:Bounds x="1482" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

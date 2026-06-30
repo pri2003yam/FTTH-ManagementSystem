@@ -1,0 +1,143 @@
+<mxfile host="app.diagrams.net" modified="2024-06-12T00:00:00.000Z" agent="Kiro" version="22.1.2">
+  <diagram name="Disconnect Connection — Aaha Telecom" id="ftth-disconnect">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL -->
+        <mxCell id="pool" value="Disconnect Connection — POST /api/connections/{id}/disconnect" style="shape=pool;startSize=30;horizontal=1;childLayout=stackLayout;horizontalStack=0;resizeParent=1;collapsible=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="1700" height="1000" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: CSR -->
+        <mxCell id="lane_csr" value="CSR" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="30" width="1700" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=general;outline=standard;fillColor=#67AB9F;strokeColor=#2D7600;" vertex="1" parent="lane_csr">
+          <mxGeometry x="60" y="65" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t1" value="Select Active&#xa;Connection to&#xa;Disconnect" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="lane_csr">
+          <mxGeometry x="150" y="45" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_done" value="Connection&#xa;Disconnected ✓" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="lane_csr">
+          <mxGeometry x="1470" y="50" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e0" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="t1" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM -->
+        <mxCell id="lane_sys" value="SYSTEM" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="200" width="1700" height="400" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: Fetch connection -->
+        <mxCell id="t_fetch" value="Fetch Connection&#xa;connectionRepo&#xa;.findById()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="150" y="70" width="150" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- GW1: Connection found? -->
+        <mxCell id="gw1" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_sys">
+          <mxGeometry x="365" y="77" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw1_l" value="Connection&#xa;Found &amp; Active?" style="text;html=1;align=center;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="lane_sys">
+          <mxGeometry x="340" y="42" width="100" height="33" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2: Disconnect (soft delete) -->
+        <mxCell id="t_disconnect" value="Set DISCONNECTED&#xa;+ disconnected_on&#xa;= today&#xa;connectionRepo&#xa;.disconnect()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="490" y="62" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3: Release port -->
+        <mxCell id="t_release" value="Release Port&#xa;(ASSIGNED →&#xa;AVAILABLE)&#xa;inventoryService&#xa;.releasePort()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="720" y="62" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4: Deactivate customer -->
+        <mxCell id="t_deactivate" value="Deactivate Customer&#xa;(ACTIVE → INACTIVE)&#xa;customer.deactivate()" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#e6d0de;strokeColor=#996185;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="940" y="62" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5: Send email -->
+        <mxCell id="t_email" value="Send DISCONNECT&#xa;Email" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1170" y="70" width="150" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- End -->
+        <mxCell id="end_ok" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1390" y="82" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Error ends -->
+        <mxCell id="err1" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="lane_sys">
+          <mxGeometry x="370" y="300" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="err1_l" value="Connection not found&#xa;or already disconnected" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_sys">
+          <mxGeometry x="335" y="342" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_fetch" target="gw1" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="YES" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw1" target="t_disconnect" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2_err" value="NO" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="gw1" target="err1" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_disconnect" target="t_release" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_release" target="t_deactivate" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_deactivate" target="t_email" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_email" target="end_ok" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: DATABASE -->
+        <mxCell id="lane_db" value="DATABASE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="600" width="1700" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db1" value="customer_&#xa;connections" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="530" y="55" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="ports" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="765" y="55" width="70" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db3" value="customers" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="985" y="55" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db4" value="email_logs" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="1200" y="55" width="90" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: EMAIL -->
+        <mxCell id="lane_email" value="EMAIL SERVICE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="770" width="1700" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_mail" value="&quot;Connection Disconnected&#xa;- Aaha Telecom&quot;&#xa;Connection ID" style="shape=mxgraph.bpmn.task;taskMarker=send;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="lane_email">
+          <mxGeometry x="1150" y="35" width="190" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- LEGEND -->
+        <mxCell id="leg" value="State Changes:  Connection: ACTIVE → DISCONNECTED    Port: ASSIGNED → AVAILABLE    Customer: ACTIVE → INACTIVE" style="text;html=1;align=left;fontSize=10;fillColor=none;strokeColor=none;fontStyle=2;" vertex="1" parent="pool">
+          <mxGeometry x="50" y="930" width="700" height="25" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

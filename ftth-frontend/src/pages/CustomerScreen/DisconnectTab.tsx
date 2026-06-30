@@ -14,7 +14,7 @@ export default function DisconnectTab({ connectionId, customerName, onDone }: { 
     setMsg("");
     setError("");
     try {
-      await api.post(ENDPOINTS.CONNECTION_DISCONNECT(connectionId), {});
+      await api.post(ENDPOINTS.CONNECTION_DISCONNECT(connectionId), { connectionId });
       setMsg("Connection disconnected successfully.");
       setConfirming(false);
       setTimeout(onDone, 1000);

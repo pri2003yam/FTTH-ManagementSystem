@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_1"
+                  targetNamespace="http://aaha-telecom.com/ftth">
+
+  <bpmn:process id="Process_NewConnection" name="New Connection" isExecutable="true">
+
+    <!-- START -->
+    <bpmn:startEvent id="Start" name="Request from Frontend">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- STEP 1: KYC Verification (replaces salary check) -->
+    <bpmn:serviceTask id="Task_KYC" name="KYC Verification (PAN)"
+                      camunda:type="external" camunda:topic="kycVerify">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F_KYC</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_KYC" name="KYC Passed?">
+      <bpmn:incoming>F_KYC</bpmn:incoming>
+      <bpmn:outgoing>F_KYC_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_KYC_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- STEP 2: Validate Plan -->
+    <bpmn:serviceTask id="Task_ValidatePlan" name="Validate Plan"
+                      camunda:type="external" camunda:topic="validatePlan">
+      <bpmn:incoming>F_KYC_Yes</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Plan" name="Plan Valid?">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F_Plan_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Plan_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- STEP 3: Check Service Area -->
+    <bpmn:serviceTask id="Task_CheckArea" name="Check Service Area"
+                      camunda:type="external" camunda:topic="checkServiceArea">
+      <bpmn:incoming>F_Plan_Yes</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Area" name="Area Active?">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F_Area_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Area_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- STEP 4: Reserve Port (calls Reservation Service) -->
+    <bpmn:serviceTask id="Task_CheckPorts" name="Reserve Port"
+                      camunda:type="external" camunda:topic="checkPorts">
+      <bpmn:incoming>F_Area_Yes</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Ports" name="Port Reserved?">
+      <bpmn:incoming>F4</bpmn:incoming>
+      <bpmn:outgoing>F_Ports_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Ports_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- STEP 5: Create Connection (confirms reservation) -->
+    <bpmn:serviceTask id="Task_CreateConnection" name="Create Connection"
+                      camunda:type="external" camunda:topic="createConnection">
+      <bpmn:incoming>F_Ports_Yes</bpmn:incoming>
+      <bpmn:outgoing>F5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- END: Success -->
+    <bpmn:endEvent id="End_Success" name="Connection Created">
+      <bpmn:incoming>F5</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ERROR ENDS -->
+    <bpmn:endEvent id="End_Err_KYC" name="KYC Failed">
+      <bpmn:incoming>F_KYC_No</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err_Plan" name="Invalid Plan">
+      <bpmn:incoming>F_Plan_No</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err_Area" name="Area Not Available">
+      <bpmn:incoming>F_Area_No</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err_Ports" name="No Ports Available">
+      <bpmn:incoming>F_Ports_No</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- FLOWS -->
+    <bpmn:sequenceFlow id="F1" sourceRef="Start" targetRef="Task_KYC" />
+    <bpmn:sequenceFlow id="F_KYC" sourceRef="Task_KYC" targetRef="GW_KYC" />
+    <bpmn:sequenceFlow id="F_KYC_Yes" name="PASS" sourceRef="GW_KYC" targetRef="Task_ValidatePlan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${kycPassed == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_KYC_No" name="FAIL" sourceRef="GW_KYC" targetRef="End_Err_KYC">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${kycPassed == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_ValidatePlan" targetRef="GW_Plan" />
+    <bpmn:sequenceFlow id="F_Plan_Yes" name="YES" sourceRef="GW_Plan" targetRef="Task_CheckArea">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Plan_No" name="NO" sourceRef="GW_Plan" targetRef="End_Err_Plan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_CheckArea" targetRef="GW_Area" />
+    <bpmn:sequenceFlow id="F_Area_Yes" name="YES" sourceRef="GW_Area" targetRef="Task_CheckPorts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Area_No" name="NO" sourceRef="GW_Area" targetRef="End_Err_Area">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_CheckPorts" targetRef="GW_Ports" />
+    <bpmn:sequenceFlow id="F_Ports_Yes" name="YES" sourceRef="GW_Ports" targetRef="Task_CreateConnection">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts &gt; 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Ports_No" name="NO" sourceRef="GW_Ports" targetRef="End_Err_Ports">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts &lt;= 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F5" sourceRef="Task_CreateConnection" targetRef="End_Success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_NewConnection">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start"><dc:Bounds x="180" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_KYC_di" bpmnElement="Task_KYC"><dc:Bounds x="270" y="140" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_KYC_di" bpmnElement="GW_KYC" isMarkerVisible="true"><dc:Bounds x="460" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidatePlan_di" bpmnElement="Task_ValidatePlan"><dc:Bounds x="560" y="140" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Plan_di" bpmnElement="GW_Plan" isMarkerVisible="true"><dc:Bounds x="750" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckArea_di" bpmnElement="Task_CheckArea"><dc:Bounds x="850" y="140" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Area_di" bpmnElement="GW_Area" isMarkerVisible="true"><dc:Bounds x="1040" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckPorts_di" bpmnElement="Task_CheckPorts"><dc:Bounds x="1140" y="140" width="140" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Ports_di" bpmnElement="GW_Ports" isMarkerVisible="true"><dc:Bounds x="1330" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateConnection_di" bpmnElement="Task_CreateConnection"><dc:Bounds x="1430" y="140" width="160" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Success_di" bpmnElement="End_Success"><dc:Bounds x="1650" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_KYC_di" bpmnElement="End_Err_KYC"><dc:Bounds x="467" y="352" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_Plan_di" bpmnElement="End_Err_Plan"><dc:Bounds x="757" y="352" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_Area_di" bpmnElement="End_Err_Area"><dc:Bounds x="1047" y="352" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_Ports_di" bpmnElement="End_Err_Ports"><dc:Bounds x="1337" y="352" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1"><di:waypoint x="216" y="180" /><di:waypoint x="270" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_KYC_di" bpmnElement="F_KYC"><di:waypoint x="410" y="180" /><di:waypoint x="460" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_KYC_Yes_di" bpmnElement="F_KYC_Yes"><di:waypoint x="510" y="180" /><di:waypoint x="560" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_KYC_No_di" bpmnElement="F_KYC_No"><di:waypoint x="485" y="205" /><di:waypoint x="485" y="352" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2"><di:waypoint x="700" y="180" /><di:waypoint x="750" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Plan_Yes_di" bpmnElement="F_Plan_Yes"><di:waypoint x="800" y="180" /><di:waypoint x="850" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Plan_No_di" bpmnElement="F_Plan_No"><di:waypoint x="775" y="205" /><di:waypoint x="775" y="352" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3"><di:waypoint x="990" y="180" /><di:waypoint x="1040" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Area_Yes_di" bpmnElement="F_Area_Yes"><di:waypoint x="1090" y="180" /><di:waypoint x="1140" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Area_No_di" bpmnElement="F_Area_No"><di:waypoint x="1065" y="205" /><di:waypoint x="1065" y="352" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4"><di:waypoint x="1280" y="180" /><di:waypoint x="1330" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Ports_Yes_di" bpmnElement="F_Ports_Yes"><di:waypoint x="1380" y="180" /><di:waypoint x="1430" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Ports_No_di" bpmnElement="F_Ports_No"><di:waypoint x="1355" y="205" /><di:waypoint x="1355" y="352" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F5_di" bpmnElement="F5"><di:waypoint x="1590" y="180" /><di:waypoint x="1650" y="180" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

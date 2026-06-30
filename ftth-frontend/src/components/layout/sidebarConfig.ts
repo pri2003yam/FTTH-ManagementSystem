@@ -14,4 +14,5 @@ export const sidebarItems: {
   { label: "Capacity",     icon: "📈", path: "/capacity",    roles: ["ADMIN", "MAINT"] },
   { label: "Users",        icon: "🔑", path: "/users",       roles: ["ADMIN"] },
   { label: "Maintenance",  icon: "🔧", path: "/maintenance", roles: ["ADMIN", "MAINT"] },
+  { label: "Work Requests",icon: "📝", path: "/work-requests", roles: ["ADMIN", "CSR", "MAINT"] },
 ];

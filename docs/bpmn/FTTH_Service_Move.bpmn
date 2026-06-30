@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Move"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_AreaNotAvailable" name="AreaNotAvailableError" errorCode="ERR_AREA_NOT_AVAILABLE" />
+  <bpmn:error id="Error_NoPortsAvailable" name="NoPortsAvailableError" errorCode="ERR_NO_PORTS_AVAILABLE" />
+
+  <bpmn:collaboration id="Collab_Move">
+    <bpmn:participant id="Pool_Move" name="Service Move — POST /api/connections/{id}/move" processRef="Process_Move" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_Move" name="Service Move" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_MV">
+      <bpmn:lane id="Lane_CSR_MV" name="CSR">
+        <bpmn:flowNodeRef>Start_MV</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectMove</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sys_MV" name="System (CustomerConnectionService.updateCustomerConnection)">
+        <bpmn:flowNodeRef>Task_GetPlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FindNewArea</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_AreaActive</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckOltPorts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_PortsAvail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AllocNewPort</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReleaseOldPort</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UpdateLocation</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_MoveEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_MV_OK</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_MV_Err1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_MV_Err2</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_MV" name="CSR initiates move">
+      <bpmn:outgoing>MF1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_SelectMove" name="Select Connection &amp; Enter New Pincode">
+      <bpmn:incoming>MF1</bpmn:incoming>
+      <bpmn:outgoing>MF2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_GetPlan" name="Get current plan OLT type — planService.findPlanById(conn.getPlanId()).getOltType()" camunda:expression="${true}">
+      <bpmn:incoming>MF2</bpmn:incoming>
+      <bpmn:outgoing>MF3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_FindNewArea" name="serviceAreaService.getActiveServiceArea(newPincode)" camunda:expression="${true}">
+      <bpmn:incoming>MF3</bpmn:incoming>
+      <bpmn:outgoing>MF4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_AreaActive" name="New Service Area Exists &amp; Active?">
+      <bpmn:incoming>MF4</bpmn:incoming>
+      <bpmn:outgoing>MF4_Yes</bpmn:outgoing>
+      <bpmn:outgoing>MF4_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_CheckOltPorts" name="inventoryService.getAvailablePortsByType(newAreaId, oltType) — Check SAME OLT type availability" camunda:expression="${true}">
+      <bpmn:incoming>MF4_Yes</bpmn:incoming>
+      <bpmn:outgoing>MF5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_PortsAvail" name="Same OLT Type Ports Available in New Pincode?">
+      <bpmn:incoming>MF5</bpmn:incoming>
+      <bpmn:outgoing>MF5_Yes</bpmn:outgoing>
+      <bpmn:outgoing>MF5_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_AllocNewPort" name="inventoryService.allocatePort(newAreaId, oltType) — New Port: AVAILABLE → ASSIGNED" camunda:expression="${true}">
+      <bpmn:incoming>MF5_Yes</bpmn:incoming>
+      <bpmn:outgoing>MF6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ReleaseOldPort" name="inventoryService.releasePort(oldPortId) — Old Port: ASSIGNED → AVAILABLE" camunda:expression="${true}">
+      <bpmn:incoming>MF6</bpmn:incoming>
+      <bpmn:outgoing>MF7</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_UpdateLocation" name="connectionRepo.updateLocation(connectionId, newServiceAreaId, newPortId, userId)" camunda:expression="${true}">
+      <bpmn:incoming>MF7</bpmn:incoming>
+      <bpmn:outgoing>MF8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_MoveEmail" name="email.sendCustomerMoveEmail(customer, connection, newPincode) — SERVICE_MOVE" camunda:expression="${true}">
+      <bpmn:incoming>MF8</bpmn:incoming>
+      <bpmn:outgoing>MF9</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_MV_OK" name="Customer Moved Successfully">
+      <bpmn:incoming>MF9</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_MV_Err1" name="Service not available in this pincode">
+      <bpmn:incoming>MF4_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_MV1" errorRef="Error_AreaNotAvailable" />
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_MV_Err2" name="No [oltType] ports available in new pincode (e.g. OLT500 not available)">
+      <bpmn:incoming>MF5_No</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_MV2" errorRef="Error_NoPortsAvailable" />
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="MF1" sourceRef="Start_MV" targetRef="Task_SelectMove" />
+    <bpmn:sequenceFlow id="MF2" sourceRef="Task_SelectMove" targetRef="Task_GetPlan" />
+    <bpmn:sequenceFlow id="MF3" sourceRef="Task_GetPlan" targetRef="Task_FindNewArea" />
+    <bpmn:sequenceFlow id="MF4" sourceRef="Task_FindNewArea" targetRef="GW_AreaActive" />
+    <bpmn:sequenceFlow id="MF4_Yes" name="YES" sourceRef="GW_AreaActive" targetRef="Task_CheckOltPorts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MF4_No" name="NO" sourceRef="GW_AreaActive" targetRef="End_MV_Err1">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${areaActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MF5" sourceRef="Task_CheckOltPorts" targetRef="GW_PortsAvail" />
+    <bpmn:sequenceFlow id="MF5_Yes" name="YES" sourceRef="GW_PortsAvail" targetRef="Task_AllocNewPort">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts > 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MF5_No" name="NO" sourceRef="GW_PortsAvail" targetRef="End_MV_Err2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${availablePorts &lt;= 0}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MF6" sourceRef="Task_AllocNewPort" targetRef="Task_ReleaseOldPort" />
+    <bpmn:sequenceFlow id="MF7" sourceRef="Task_ReleaseOldPort" targetRef="Task_UpdateLocation" />
+    <bpmn:sequenceFlow id="MF8" sourceRef="Task_UpdateLocation" targetRef="Task_MoveEmail" />
+    <bpmn:sequenceFlow id="MF9" sourceRef="Task_MoveEmail" targetRef="End_MV_OK" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_MV">
+    <bpmndi:BPMNPlane id="BPMNPlane_MV" bpmnElement="Collab_Move">
+      <bpmndi:BPMNShape id="Pool_Move_di" bpmnElement="Pool_Move" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1900" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSR_MV_di" bpmnElement="Lane_CSR_MV" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1870" height="130" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_MV_di" bpmnElement="Lane_Sys_MV" isHorizontal="true">
+        <dc:Bounds x="190" y="190" width="1870" height="370" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_MV_di" bpmnElement="Start_MV">
+        <dc:Bounds x="232" y="107" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectMove_di" bpmnElement="Task_SelectMove">
+        <dc:Bounds x="310" y="90" width="170" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GetPlan_di" bpmnElement="Task_GetPlan">
+        <dc:Bounds x="270" y="250" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FindNewArea_di" bpmnElement="Task_FindNewArea">
+        <dc:Bounds x="490" y="250" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_AreaActive_di" bpmnElement="GW_AreaActive" isMarkerVisible="true">
+        <dc:Bounds x="705" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckOltPorts_di" bpmnElement="Task_CheckOltPorts">
+        <dc:Bounds x="800" y="240" width="190" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_PortsAvail_di" bpmnElement="GW_PortsAvail" isMarkerVisible="true">
+        <dc:Bounds x="1035" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AllocNewPort_di" bpmnElement="Task_AllocNewPort">
+        <dc:Bounds x="1130" y="250" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReleaseOldPort_di" bpmnElement="Task_ReleaseOldPort">
+        <dc:Bounds x="1340" y="250" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdateLocation_di" bpmnElement="Task_UpdateLocation">
+        <dc:Bounds x="1550" y="250" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_MoveEmail_di" bpmnElement="Task_MoveEmail">
+        <dc:Bounds x="1760" y="250" width="160" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_MV_OK_di" bpmnElement="End_MV_OK">
+        <dc:Bounds x="1962" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_MV_Err1_di" bpmnElement="End_MV_Err1">
+        <dc:Bounds x="712" y="442" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_MV_Err2_di" bpmnElement="End_MV_Err2">
+        <dc:Bounds x="1042" y="442" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

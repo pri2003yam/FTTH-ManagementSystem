@@ -44,7 +44,7 @@ export default function MoveTab({ connectionId, currentPincode, onDone }: { conn
     setMsg("");
     setError("");
     try {
-      await api.post(ENDPOINTS.CONNECTION_MOVE(connectionId), { newPincode: Number(pincode.trim()) });
+      await api.post(ENDPOINTS.CONNECTION_MOVE(connectionId), { connectionId, newPincode: Number(pincode.trim()) });
       setMsg("Customer moved successfully.");
       setPincode("");
       setCheck(null);

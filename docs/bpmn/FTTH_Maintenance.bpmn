@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Maint"
+                  targetNamespace="http://aaha-telecom.com/ftth"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <bpmn:collaboration id="Collab_Maint">
+    <bpmn:participant id="Pool_Maint" name="Maintenance Operations — /api/maintenance" processRef="Process_Maint" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_Maint" name="Maintenance" isExecutable="true">
+
+    <bpmn:laneSet id="LaneSet_MT">
+      <bpmn:lane id="Lane_Maint_User" name="MAINT User">
+        <bpmn:flowNodeRef>Start_MT</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectComponent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_Component</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Sys_MT" name="System (MaintenanceService)">
+        <bpmn:flowNodeRef>Task_PortGetCust</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PortSetFaulty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GW_PortHasCust</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PortEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Port</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SplGetCusts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SplSetFaulty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SplEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Spl</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OltGetCusts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OltSetFaulty</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_OltEmail</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Olt</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <!-- START -->
+    <bpmn:startEvent id="Start_MT" name="MAINT initiates maintenance">
+      <bpmn:outgoing>MT1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_SelectComponent" name="Select Component: Port / Splitter / OLT">
+      <bpmn:incoming>MT1</bpmn:incoming>
+      <bpmn:outgoing>MT2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="GW_Component" name="Component Type?">
+      <bpmn:incoming>MT2</bpmn:incoming>
+      <bpmn:outgoing>MT_Port</bpmn:outgoing>
+      <bpmn:outgoing>MT_Spl</bpmn:outgoing>
+      <bpmn:outgoing>MT_Olt</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- PORT PATH -->
+    <bpmn:serviceTask id="Task_PortGetCust" name="repo.getCustomerOnPort(portId) — Find affected customer" camunda:expression="${true}">
+      <bpmn:incoming>MT_Port</bpmn:incoming>
+      <bpmn:outgoing>MT_P2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_PortSetFaulty" name="repo.setPortMaintenance(portId) — Port: ASSIGNED → FAULTY" camunda:expression="${true}">
+      <bpmn:incoming>MT_P2</bpmn:incoming>
+      <bpmn:outgoing>MT_P3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_PortHasCust" name="Customer on port?">
+      <bpmn:incoming>MT_P3</bpmn:incoming>
+      <bpmn:outgoing>MT_P3_Yes</bpmn:outgoing>
+      <bpmn:outgoing>MT_P3_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:sendTask id="Task_PortEmail" name="Send OLT_ALERT email to affected customer" camunda:expression="${true}">
+      <bpmn:incoming>MT_P3_Yes</bpmn:incoming>
+      <bpmn:outgoing>MT_P4</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_Port" name="Port Maintenance Started">
+      <bpmn:incoming>MT_P4</bpmn:incoming>
+      <bpmn:incoming>MT_P3_No</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- SPLITTER PATH -->
+    <bpmn:serviceTask id="Task_SplGetCusts" name="repo.getCustomersOnSplitter(splitterId) — Find ALL affected customers" camunda:expression="${true}">
+      <bpmn:incoming>MT_Spl</bpmn:incoming>
+      <bpmn:outgoing>MT_S2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SplSetFaulty" name="repo.setSplitterMaintenance(splitterId) — ALL ports on splitter → FAULTY" camunda:expression="${true}">
+      <bpmn:incoming>MT_S2</bpmn:incoming>
+      <bpmn:outgoing>MT_S3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_SplEmail" name="Send OLT_ALERT email to EACH affected customer" camunda:expression="${true}">
+      <bpmn:incoming>MT_S3</bpmn:incoming>
+      <bpmn:outgoing>MT_S4</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_Spl" name="Splitter Maintenance Started">
+      <bpmn:incoming>MT_S4</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- OLT PATH -->
+    <bpmn:serviceTask id="Task_OltGetCusts" name="repo.getCustomersOnOlt(oltId) — Find ALL affected customers" camunda:expression="${true}">
+      <bpmn:incoming>MT_Olt</bpmn:incoming>
+      <bpmn:outgoing>MT_O2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_OltSetFaulty" name="repo.setOltMaintenance(oltId) — ALL ports on ALL splitters → FAULTY" camunda:expression="${true}">
+      <bpmn:incoming>MT_O2</bpmn:incoming>
+      <bpmn:outgoing>MT_O3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sendTask id="Task_OltEmail" name="Send OLT_ALERT email to EACH affected customer" camunda:expression="${true}">
+      <bpmn:incoming>MT_O3</bpmn:incoming>
+      <bpmn:outgoing>MT_O4</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_Olt" name="OLT Maintenance Started">
+      <bpmn:incoming>MT_O4</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- FLOWS -->
+    <bpmn:sequenceFlow id="MT1" sourceRef="Start_MT" targetRef="Task_SelectComponent" />
+    <bpmn:sequenceFlow id="MT2" sourceRef="Task_SelectComponent" targetRef="GW_Component" />
+    <bpmn:sequenceFlow id="MT_Port" name="Port" sourceRef="GW_Component" targetRef="Task_PortGetCust">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${componentType == 'PORT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MT_Spl" name="Splitter" sourceRef="GW_Component" targetRef="Task_SplGetCusts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${componentType == 'SPLITTER'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MT_Olt" name="OLT" sourceRef="GW_Component" targetRef="Task_OltGetCusts">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${componentType == 'OLT'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MT_P2" sourceRef="Task_PortGetCust" targetRef="Task_PortSetFaulty" />
+    <bpmn:sequenceFlow id="MT_P3" sourceRef="Task_PortSetFaulty" targetRef="GW_PortHasCust" />
+    <bpmn:sequenceFlow id="MT_P3_Yes" name="YES" sourceRef="GW_PortHasCust" targetRef="Task_PortEmail">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${customerOnPort == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MT_P3_No" name="NO" sourceRef="GW_PortHasCust" targetRef="End_Port">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${customerOnPort == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="MT_P4" sourceRef="Task_PortEmail" targetRef="End_Port" />
+    <bpmn:sequenceFlow id="MT_S2" sourceRef="Task_SplGetCusts" targetRef="Task_SplSetFaulty" />
+    <bpmn:sequenceFlow id="MT_S3" sourceRef="Task_SplSetFaulty" targetRef="Task_SplEmail" />
+    <bpmn:sequenceFlow id="MT_S4" sourceRef="Task_SplEmail" targetRef="End_Spl" />
+    <bpmn:sequenceFlow id="MT_O2" sourceRef="Task_OltGetCusts" targetRef="Task_OltSetFaulty" />
+    <bpmn:sequenceFlow id="MT_O3" sourceRef="Task_OltSetFaulty" targetRef="Task_OltEmail" />
+    <bpmn:sequenceFlow id="MT_O4" sourceRef="Task_OltEmail" targetRef="End_Olt" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_MT">
+    <bpmndi:BPMNPlane id="BPMNPlane_MT" bpmnElement="Collab_Maint">
+      <bpmndi:BPMNShape id="Pool_Maint_di" bpmnElement="Pool_Maint" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1500" height="750" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Maint_User_di" bpmnElement="Lane_Maint_User" isHorizontal="true">
+        <dc:Bounds x="190" y="60" width="1470" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Sys_MT_di" bpmnElement="Lane_Sys_MT" isHorizontal="true">
+        <dc:Bounds x="190" y="220" width="1470" height="590" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_MT_di" bpmnElement="Start_MT">
+        <dc:Bounds x="232" y="122" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectComponent_di" bpmnElement="Task_SelectComponent">
+        <dc:Bounds x="320" y="100" width="170" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Component_di" bpmnElement="GW_Component" isMarkerVisible="true">
+        <dc:Bounds x="545" y="115" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <!-- Port row -->
+      <bpmndi:BPMNShape id="Task_PortGetCust_di" bpmnElement="Task_PortGetCust">
+        <dc:Bounds x="400" y="270" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PortSetFaulty_di" bpmnElement="Task_PortSetFaulty">
+        <dc:Bounds x="620" y="270" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_PortHasCust_di" bpmnElement="GW_PortHasCust" isMarkerVisible="true">
+        <dc:Bounds x="840" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PortEmail_di" bpmnElement="Task_PortEmail">
+        <dc:Bounds x="940" y="270" width="170" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Port_di" bpmnElement="End_Port">
+        <dc:Bounds x="1162" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Splitter row -->
+      <bpmndi:BPMNShape id="Task_SplGetCusts_di" bpmnElement="Task_SplGetCusts">
+        <dc:Bounds x="400" y="430" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SplSetFaulty_di" bpmnElement="Task_SplSetFaulty">
+        <dc:Bounds x="630" y="430" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SplEmail_di" bpmnElement="Task_SplEmail">
+        <dc:Bounds x="860" y="430" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Spl_di" bpmnElement="End_Spl">
+        <dc:Bounds x="1092" y="442" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- OLT row -->
+      <bpmndi:BPMNShape id="Task_OltGetCusts_di" bpmnElement="Task_OltGetCusts">
+        <dc:Bounds x="400" y="590" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_OltSetFaulty_di" bpmnElement="Task_OltSetFaulty">
+        <dc:Bounds x="630" y="590" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_OltEmail_di" bpmnElement="Task_OltEmail">
+        <dc:Bounds x="860" y="590" width="180" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Olt_di" bpmnElement="End_Olt">
+        <dc:Bounds x="1092" y="602" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

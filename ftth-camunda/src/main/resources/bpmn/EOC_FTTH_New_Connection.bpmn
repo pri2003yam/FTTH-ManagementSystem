@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_EOC_NewConn"
+                  targetNamespace="http://aaha-telecom.com/ftth/eoc"
+                  exporter="Kiro" exporterVersion="1.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_CartCreationFailed" name="Cart Creation Failed" errorCode="ERR_CART_CREATION_FAILED" />
+  <bpmn:error id="Error_CartValidationFailed" name="Cart Validation Failed" errorCode="ERR_CART_VALIDATION_FAILED" />
+  <bpmn:error id="Error_CartPricingFailed" name="Cart Pricing Failed" errorCode="ERR_CART_PRICING_FAILED" />
+  <bpmn:error id="Error_CartSubmissionFailed" name="Cart Submission Failed" errorCode="ERR_CART_SUBMISSION_FAILED" />
+  <bpmn:error id="Error_ProductRegistrationFailed" name="Product Registration Failed" errorCode="ERR_PRODUCT_REGISTRATION_FAILED" />
+  <bpmn:error id="Error_ServiceRegistrationFailed" name="Service Registration Failed" errorCode="ERR_SERVICE_REGISTRATION_FAILED" />
+
+  <bpmn:process id="EOC_FTTH_New_Connection" name="EOC FTTH New Connection" isExecutable="true">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="New Connection Request">
+      <bpmn:outgoing>Flow_Start_CreateCart</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task: Create New Connection Cart -->
+    <bpmn:serviceTask id="Task_CreateNewConnectionCart" name="Create New Connection Cart" camunda:delegateExpression="${createNewConnectionCartDelegate}">
+      <bpmn:incoming>Flow_Start_CreateCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateCart_ValidateCart</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Create Cart -->
+    <bpmn:boundaryEvent id="BoundaryEvent_CartCreation" name="Cart Creation Error" attachedToRef="Task_CreateNewConnectionCart">
+      <bpmn:outgoing>Flow_CartCreationError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_CartCreation" errorRef="Error_CartCreationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Validate Cart -->
+    <bpmn:serviceTask id="Task_ValidateCart" name="Validate Cart" camunda:delegateExpression="${validateCartDelegate}">
+      <bpmn:incoming>Flow_CreateCart_ValidateCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidateCart_Gateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Validate Cart -->
+    <bpmn:boundaryEvent id="BoundaryEvent_CartValidation" name="Cart Validation Error" attachedToRef="Task_ValidateCart">
+      <bpmn:outgoing>Flow_CartValidationError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_CartValidation" errorRef="Error_CartValidationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Exclusive Gateway: Cart Valid? -->
+    <bpmn:exclusiveGateway id="Gateway_CartValid" name="Cart Valid?">
+      <bpmn:incoming>Flow_ValidateCart_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_CartValid_True</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CartValid_False</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task: Price Cart -->
+    <bpmn:serviceTask id="Task_PriceCart" name="Price Cart" camunda:delegateExpression="${priceCartDelegate}">
+      <bpmn:incoming>Flow_CartValid_True</bpmn:incoming>
+      <bpmn:outgoing>Flow_PriceCart_SubmitCart</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Price Cart -->
+    <bpmn:boundaryEvent id="BoundaryEvent_CartPricing" name="Cart Pricing Error" attachedToRef="Task_PriceCart">
+      <bpmn:outgoing>Flow_CartPricingError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_CartPricing" errorRef="Error_CartPricingFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Submit Cart -->
+    <bpmn:serviceTask id="Task_SubmitCart" name="Submit Cart" camunda:delegateExpression="${submitCartDelegate}">
+      <bpmn:incoming>Flow_PriceCart_SubmitCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitCart_RegisterProduct</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Submit Cart -->
+    <bpmn:boundaryEvent id="BoundaryEvent_CartSubmission" name="Cart Submission Error" attachedToRef="Task_SubmitCart">
+      <bpmn:outgoing>Flow_CartSubmissionError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_CartSubmission" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Register Product -->
+    <bpmn:serviceTask id="Task_RegisterProduct" name="Register Product" camunda:delegateExpression="${registerProductDelegate}">
+      <bpmn:incoming>Flow_SubmitCart_RegisterProduct</bpmn:incoming>
+      <bpmn:outgoing>Flow_RegisterProduct_RegisterService</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Register Product -->
+    <bpmn:boundaryEvent id="BoundaryEvent_ProductRegistration" name="Product Registration Error" attachedToRef="Task_RegisterProduct">
+      <bpmn:outgoing>Flow_ProductRegistrationError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_ProductRegistration" errorRef="Error_ProductRegistrationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Register Service -->
+    <bpmn:serviceTask id="Task_RegisterService" name="Register Service" camunda:delegateExpression="${registerServiceDelegate}">
+      <bpmn:incoming>Flow_RegisterProduct_RegisterService</bpmn:incoming>
+      <bpmn:outgoing>Flow_RegisterService_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Register Service -->
+    <bpmn:boundaryEvent id="BoundaryEvent_ServiceRegistration" name="Service Registration Error" attachedToRef="Task_RegisterService">
+      <bpmn:outgoing>Flow_ServiceRegistrationError_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_ServiceRegistration" errorRef="Error_ServiceRegistrationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- End Event: Success -->
+    <bpmn:endEvent id="EndEvent_Success" name="Connection Registered Successfully">
+      <bpmn:incoming>Flow_RegisterService_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Validation Failed (cartValid == false) -->
+    <bpmn:endEvent id="EndEvent_ValidationFailed" name="Cart Validation Failed">
+      <bpmn:incoming>Flow_CartValid_False</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_ValidationEnd" errorRef="Error_CartValidationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Creation Failed -->
+    <bpmn:endEvent id="EndEvent_CartCreationFailed" name="Cart Creation Failed">
+      <bpmn:incoming>Flow_CartCreationError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartCreationEnd" errorRef="Error_CartCreationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Validation Error -->
+    <bpmn:endEvent id="EndEvent_CartValidationError" name="Cart Validation Error">
+      <bpmn:incoming>Flow_CartValidationError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartValidationErrorEnd" errorRef="Error_CartValidationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Pricing Failed -->
+    <bpmn:endEvent id="EndEvent_CartPricingFailed" name="Cart Pricing Failed">
+      <bpmn:incoming>Flow_CartPricingError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartPricingEnd" errorRef="Error_CartPricingFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Submission Failed -->
+    <bpmn:endEvent id="EndEvent_CartSubmissionFailed" name="Cart Submission Failed">
+      <bpmn:incoming>Flow_CartSubmissionError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartSubmissionEnd" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Product Registration Failed -->
+    <bpmn:endEvent id="EndEvent_ProductRegistrationFailed" name="Product Registration Failed">
+      <bpmn:incoming>Flow_ProductRegistrationError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_ProductRegistrationEnd" errorRef="Error_ProductRegistrationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Service Registration Failed -->
+    <bpmn:endEvent id="EndEvent_ServiceRegistrationFailed" name="Service Registration Failed">
+      <bpmn:incoming>Flow_ServiceRegistrationError_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_ServiceRegistrationEnd" errorRef="Error_ServiceRegistrationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_Start_CreateCart" sourceRef="StartEvent_1" targetRef="Task_CreateNewConnectionCart" />
+    <bpmn:sequenceFlow id="Flow_CreateCart_ValidateCart" sourceRef="Task_CreateNewConnectionCart" targetRef="Task_ValidateCart" />
+    <bpmn:sequenceFlow id="Flow_ValidateCart_Gateway" sourceRef="Task_ValidateCart" targetRef="Gateway_CartValid" />
+
+    <bpmn:sequenceFlow id="Flow_CartValid_True" name="Valid" sourceRef="Gateway_CartValid" targetRef="Task_PriceCart">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cartValid == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CartValid_False" name="Invalid" sourceRef="Gateway_CartValid" targetRef="EndEvent_ValidationFailed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cartValid == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_PriceCart_SubmitCart" sourceRef="Task_PriceCart" targetRef="Task_SubmitCart" />
+    <bpmn:sequenceFlow id="Flow_SubmitCart_RegisterProduct" sourceRef="Task_SubmitCart" targetRef="Task_RegisterProduct" />
+    <bpmn:sequenceFlow id="Flow_RegisterProduct_RegisterService" sourceRef="Task_RegisterProduct" targetRef="Task_RegisterService" />
+    <bpmn:sequenceFlow id="Flow_RegisterService_End" sourceRef="Task_RegisterService" targetRef="EndEvent_Success" />
+
+    <!-- Error Flows from Boundary Events -->
+    <bpmn:sequenceFlow id="Flow_CartCreationError_End" sourceRef="BoundaryEvent_CartCreation" targetRef="EndEvent_CartCreationFailed" />
+    <bpmn:sequenceFlow id="Flow_CartValidationError_End" sourceRef="BoundaryEvent_CartValidation" targetRef="EndEvent_CartValidationError" />
+    <bpmn:sequenceFlow id="Flow_CartPricingError_End" sourceRef="BoundaryEvent_CartPricing" targetRef="EndEvent_CartPricingFailed" />
+    <bpmn:sequenceFlow id="Flow_CartSubmissionError_End" sourceRef="BoundaryEvent_CartSubmission" targetRef="EndEvent_CartSubmissionFailed" />
+    <bpmn:sequenceFlow id="Flow_ProductRegistrationError_End" sourceRef="BoundaryEvent_ProductRegistration" targetRef="EndEvent_ProductRegistrationFailed" />
+    <bpmn:sequenceFlow id="Flow_ServiceRegistrationError_End" sourceRef="BoundaryEvent_ServiceRegistration" targetRef="EndEvent_ServiceRegistrationFailed" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_EOC_NewConn">
+    <bpmndi:BPMNPlane id="BPMNPlane_EOC_NewConn" bpmnElement="EOC_FTTH_New_Connection">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="180" y="200" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="243" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Create New Connection Cart -->
+      <bpmndi:BPMNShape id="Task_CreateNewConnectionCart_di" bpmnElement="Task_CreateNewConnectionCart">
+        <dc:Bounds x="270" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_CartCreation_di" bpmnElement="BoundaryEvent_CartCreation">
+        <dc:Bounds x="302" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Validate Cart -->
+      <bpmndi:BPMNShape id="Task_ValidateCart_di" bpmnElement="Task_ValidateCart">
+        <dc:Bounds x="430" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_CartValidation_di" bpmnElement="BoundaryEvent_CartValidation">
+        <dc:Bounds x="462" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Gateway: Cart Valid? -->
+      <bpmndi:BPMNShape id="Gateway_CartValid_di" bpmnElement="Gateway_CartValid" isMarkerVisible="true">
+        <dc:Bounds x="590" y="193" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="585" y="163" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Price Cart -->
+      <bpmndi:BPMNShape id="Task_PriceCart_di" bpmnElement="Task_PriceCart">
+        <dc:Bounds x="700" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_CartPricing_di" bpmnElement="BoundaryEvent_CartPricing">
+        <dc:Bounds x="732" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Submit Cart -->
+      <bpmndi:BPMNShape id="Task_SubmitCart_di" bpmnElement="Task_SubmitCart">
+        <dc:Bounds x="860" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_CartSubmission_di" bpmnElement="BoundaryEvent_CartSubmission">
+        <dc:Bounds x="892" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Register Product -->
+      <bpmndi:BPMNShape id="Task_RegisterProduct_di" bpmnElement="Task_RegisterProduct">
+        <dc:Bounds x="1020" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_ProductRegistration_di" bpmnElement="BoundaryEvent_ProductRegistration">
+        <dc:Bounds x="1052" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Register Service -->
+      <bpmndi:BPMNShape id="Task_RegisterService_di" bpmnElement="Task_RegisterService">
+        <dc:Bounds x="1180" y="178" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_ServiceRegistration_di" bpmnElement="BoundaryEvent_ServiceRegistration">
+        <dc:Bounds x="1212" y="240" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- End Event: Success -->
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1340" y="200" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1315" y="243" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Events -->
+      <bpmndi:BPMNShape id="EndEvent_ValidationFailed_di" bpmnElement="EndEvent_ValidationFailed">
+        <dc:Bounds x="597" y="370" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="572" y="413" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_CartCreationFailed_di" bpmnElement="EndEvent_CartCreationFailed">
+        <dc:Bounds x="302" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_CartValidationError_di" bpmnElement="EndEvent_CartValidationError">
+        <dc:Bounds x="462" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_CartPricingFailed_di" bpmnElement="EndEvent_CartPricingFailed">
+        <dc:Bounds x="732" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_CartSubmissionFailed_di" bpmnElement="EndEvent_CartSubmissionFailed">
+        <dc:Bounds x="892" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_ProductRegistrationFailed_di" bpmnElement="EndEvent_ProductRegistrationFailed">
+        <dc:Bounds x="1052" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="EndEvent_ServiceRegistrationFailed_di" bpmnElement="EndEvent_ServiceRegistrationFailed">
+        <dc:Bounds x="1212" y="370" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_Start_CreateCart_di" bpmnElement="Flow_Start_CreateCart">
+        <di:waypoint x="216" y="218" />
+        <di:waypoint x="270" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CreateCart_ValidateCart_di" bpmnElement="Flow_CreateCart_ValidateCart">
+        <di:waypoint x="370" y="218" />
+        <di:waypoint x="430" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ValidateCart_Gateway_di" bpmnElement="Flow_ValidateCart_Gateway">
+        <di:waypoint x="530" y="218" />
+        <di:waypoint x="590" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CartValid_True_di" bpmnElement="Flow_CartValid_True">
+        <di:waypoint x="640" y="218" />
+        <di:waypoint x="700" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CartValid_False_di" bpmnElement="Flow_CartValid_False">
+        <di:waypoint x="615" y="243" />
+        <di:waypoint x="615" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_PriceCart_SubmitCart_di" bpmnElement="Flow_PriceCart_SubmitCart">
+        <di:waypoint x="800" y="218" />
+        <di:waypoint x="860" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_SubmitCart_RegisterProduct_di" bpmnElement="Flow_SubmitCart_RegisterProduct">
+        <di:waypoint x="960" y="218" />
+        <di:waypoint x="1020" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_RegisterProduct_RegisterService_di" bpmnElement="Flow_RegisterProduct_RegisterService">
+        <di:waypoint x="1120" y="218" />
+        <di:waypoint x="1180" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_RegisterService_End_di" bpmnElement="Flow_RegisterService_End">
+        <di:waypoint x="1280" y="218" />
+        <di:waypoint x="1340" y="218" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Error Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_CartCreationError_End_di" bpmnElement="Flow_CartCreationError_End">
+        <di:waypoint x="320" y="276" />
+        <di:waypoint x="320" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CartValidationError_End_di" bpmnElement="Flow_CartValidationError_End">
+        <di:waypoint x="480" y="276" />
+        <di:waypoint x="480" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CartPricingError_End_di" bpmnElement="Flow_CartPricingError_End">
+        <di:waypoint x="750" y="276" />
+        <di:waypoint x="750" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_CartSubmissionError_End_di" bpmnElement="Flow_CartSubmissionError_End">
+        <di:waypoint x="910" y="276" />
+        <di:waypoint x="910" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ProductRegistrationError_End_di" bpmnElement="Flow_ProductRegistrationError_End">
+        <di:waypoint x="1070" y="276" />
+        <di:waypoint x="1070" y="370" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ServiceRegistrationError_End_di" bpmnElement="Flow_ServiceRegistrationError_End">
+        <di:waypoint x="1230" y="276" />
+        <di:waypoint x="1230" y="370" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

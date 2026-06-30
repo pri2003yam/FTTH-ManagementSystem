@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_EOC_Service_Move"
+                  targetNamespace="http://aaha-telecom.com/ftth/eoc"
+                  exporter="Camunda Modeler" exporterVersion="5.0.0">
+
+  <!-- Error Definitions -->
+  <bpmn:error id="Error_CartCreationFailed" name="CartCreationFailedError" errorCode="ERR_CART_CREATION_FAILED" />
+  <bpmn:error id="Error_CartValidationFailed" name="CartValidationFailedError" errorCode="ERR_CART_VALIDATION_FAILED" />
+  <bpmn:error id="Error_CartSubmissionFailed" name="CartSubmissionFailedError" errorCode="ERR_CART_SUBMISSION_FAILED" />
+  <bpmn:error id="Error_ServiceLocationUpdateFailed" name="ServiceLocationUpdateFailedError" errorCode="ERR_SERVICE_LOCATION_UPDATE_FAILED" />
+
+  <bpmn:process id="EOC_FTTH_Service_Move" name="EOC FTTH Service Move" isExecutable="true">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_ServiceMove" name="Service Move Initiated">
+      <bpmn:outgoing>Flow_Start_To_CreateCart</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task: Create Service Move Cart -->
+    <bpmn:serviceTask id="Task_CreateServiceMoveCart" name="Create Service Move Cart"
+                      camunda:delegateExpression="${createServiceMoveCartDelegate}">
+      <bpmn:incoming>Flow_Start_To_CreateCart</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateCart_To_Validate</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Create Cart -->
+    <bpmn:boundaryEvent id="BoundaryError_CreateCart" name="Cart Creation Failed"
+                        attachedToRef="Task_CreateServiceMoveCart">
+      <bpmn:outgoing>Flow_CreateCartError_To_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_CreateCart" errorRef="Error_CartCreationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Validate Cart -->
+    <bpmn:serviceTask id="Task_ValidateCart" name="Validate Cart"
+                      camunda:delegateExpression="${validateCartDelegate}">
+      <bpmn:incoming>Flow_CreateCart_To_Validate</bpmn:incoming>
+      <bpmn:outgoing>Flow_Validate_To_Gateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Validate Cart -->
+    <bpmn:boundaryEvent id="BoundaryError_ValidateCart" name="Cart Validation Failed"
+                        attachedToRef="Task_ValidateCart">
+      <bpmn:outgoing>Flow_ValidateError_To_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_ValidateCart" errorRef="Error_CartValidationFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Exclusive Gateway: Cart Valid? -->
+    <bpmn:exclusiveGateway id="Gateway_CartValid" name="Cart Valid?">
+      <bpmn:incoming>Flow_Validate_To_Gateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_Gateway_To_Submit</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Gateway_To_ValidationError</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task: Submit Cart -->
+    <bpmn:serviceTask id="Task_SubmitCart" name="Submit Cart"
+                      camunda:delegateExpression="${submitCartDelegate}">
+      <bpmn:incoming>Flow_Gateway_To_Submit</bpmn:incoming>
+      <bpmn:outgoing>Flow_Submit_To_UpdateLocation</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Submit Cart -->
+    <bpmn:boundaryEvent id="BoundaryError_SubmitCart" name="Cart Submission Failed"
+                        attachedToRef="Task_SubmitCart">
+      <bpmn:outgoing>Flow_SubmitError_To_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_SubmitCart" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- Service Task: Update Service Location -->
+    <bpmn:serviceTask id="Task_UpdateServiceLocation" name="Update Service Location"
+                      camunda:delegateExpression="${updateServiceLocationDelegate}">
+      <bpmn:incoming>Flow_Submit_To_UpdateLocation</bpmn:incoming>
+      <bpmn:outgoing>Flow_UpdateLocation_To_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Boundary Error Event on Update Service Location -->
+    <bpmn:boundaryEvent id="BoundaryError_UpdateServiceLocation" name="Service Location Update Failed"
+                        attachedToRef="Task_UpdateServiceLocation">
+      <bpmn:outgoing>Flow_UpdateLocationError_To_End</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrDef_UpdateServiceLocation" errorRef="Error_ServiceLocationUpdateFailed" />
+    </bpmn:boundaryEvent>
+
+    <!-- End Event: Success -->
+    <bpmn:endEvent id="EndEvent_Success" name="Service Move Completed">
+      <bpmn:incoming>Flow_UpdateLocation_To_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Validation Error (cartValid == false) -->
+    <bpmn:endEvent id="EndEvent_ValidationError" name="Cart Validation Invalid">
+      <bpmn:incoming>Flow_Gateway_To_ValidationError</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_ValidationEnd" errorRef="Error_CartValidationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Creation Failed -->
+    <bpmn:endEvent id="EndEvent_CartCreationFailed" name="Cart Creation Failed">
+      <bpmn:incoming>Flow_CreateCartError_To_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartCreationEnd" errorRef="Error_CartCreationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Validation Exception -->
+    <bpmn:endEvent id="EndEvent_CartValidationFailed" name="Cart Validation Exception">
+      <bpmn:incoming>Flow_ValidateError_To_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartValidationEnd" errorRef="Error_CartValidationFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Cart Submission Failed -->
+    <bpmn:endEvent id="EndEvent_CartSubmissionFailed" name="Cart Submission Failed">
+      <bpmn:incoming>Flow_SubmitError_To_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_CartSubmissionEnd" errorRef="Error_CartSubmissionFailed" />
+    </bpmn:endEvent>
+
+    <!-- Error End Event: Service Location Update Failed -->
+    <bpmn:endEvent id="EndEvent_ServiceLocationUpdateFailed" name="Service Location Update Failed">
+      <bpmn:incoming>Flow_UpdateLocationError_To_End</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrDef_ServiceLocationUpdateEnd" errorRef="Error_ServiceLocationUpdateFailed" />
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_Start_To_CreateCart" sourceRef="StartEvent_ServiceMove" targetRef="Task_CreateServiceMoveCart" />
+    <bpmn:sequenceFlow id="Flow_CreateCart_To_Validate" sourceRef="Task_CreateServiceMoveCart" targetRef="Task_ValidateCart" />
+    <bpmn:sequenceFlow id="Flow_Validate_To_Gateway" sourceRef="Task_ValidateCart" targetRef="Gateway_CartValid" />
+    <bpmn:sequenceFlow id="Flow_Gateway_To_Submit" name="Valid" sourceRef="Gateway_CartValid" targetRef="Task_SubmitCart">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cartValid == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Gateway_To_ValidationError" name="Invalid" sourceRef="Gateway_CartValid" targetRef="EndEvent_ValidationError">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${cartValid == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Submit_To_UpdateLocation" sourceRef="Task_SubmitCart" targetRef="Task_UpdateServiceLocation" />
+    <bpmn:sequenceFlow id="Flow_UpdateLocation_To_End" sourceRef="Task_UpdateServiceLocation" targetRef="EndEvent_Success" />
+    <bpmn:sequenceFlow id="Flow_CreateCartError_To_End" sourceRef="BoundaryError_CreateCart" targetRef="EndEvent_CartCreationFailed" />
+    <bpmn:sequenceFlow id="Flow_ValidateError_To_End" sourceRef="BoundaryError_ValidateCart" targetRef="EndEvent_CartValidationFailed" />
+    <bpmn:sequenceFlow id="Flow_SubmitError_To_End" sourceRef="BoundaryError_SubmitCart" targetRef="EndEvent_CartSubmissionFailed" />
+    <bpmn:sequenceFlow id="Flow_UpdateLocationError_To_End" sourceRef="BoundaryError_UpdateServiceLocation" targetRef="EndEvent_ServiceLocationUpdateFailed" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ServiceMove">
+    <bpmndi:BPMNPlane id="BPMNPlane_ServiceMove" bpmnElement="EOC_FTTH_Service_Move">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_ServiceMove_di" bpmnElement="StartEvent_ServiceMove">
+        <dc:Bounds x="179" y="209" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="252" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Create Service Move Cart -->
+      <bpmndi:BPMNShape id="Task_CreateServiceMoveCart_di" bpmnElement="Task_CreateServiceMoveCart">
+        <dc:Bounds x="270" y="187" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Create Cart -->
+      <bpmndi:BPMNShape id="BoundaryError_CreateCart_di" bpmnElement="BoundaryError_CreateCart">
+        <dc:Bounds x="302" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Validate Cart -->
+      <bpmndi:BPMNShape id="Task_ValidateCart_di" bpmnElement="Task_ValidateCart">
+        <dc:Bounds x="430" y="187" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Validate Cart -->
+      <bpmndi:BPMNShape id="BoundaryError_ValidateCart_di" bpmnElement="BoundaryError_ValidateCart">
+        <dc:Bounds x="462" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Gateway: Cart Valid? -->
+      <bpmndi:BPMNShape id="Gateway_CartValid_di" bpmnElement="Gateway_CartValid" isMarkerVisible="true">
+        <dc:Bounds x="595" y="202" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="591" y="178" width="58" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Submit Cart -->
+      <bpmndi:BPMNShape id="Task_SubmitCart_di" bpmnElement="Task_SubmitCart">
+        <dc:Bounds x="710" y="187" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Submit Cart -->
+      <bpmndi:BPMNShape id="BoundaryError_SubmitCart_di" bpmnElement="BoundaryError_SubmitCart">
+        <dc:Bounds x="742" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Update Service Location -->
+      <bpmndi:BPMNShape id="Task_UpdateServiceLocation_di" bpmnElement="Task_UpdateServiceLocation">
+        <dc:Bounds x="870" y="187" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary Error on Update Service Location -->
+      <bpmndi:BPMNShape id="BoundaryError_UpdateServiceLocation_di" bpmnElement="BoundaryError_UpdateServiceLocation">
+        <dc:Bounds x="902" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- End Event: Success -->
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1032" y="209" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1008" y="252" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Event: Validation Error -->
+      <bpmndi:BPMNShape id="EndEvent_ValidationError_di" bpmnElement="EndEvent_ValidationError">
+        <dc:Bounds x="602" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="578" y="405" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Event: Cart Creation Failed -->
+      <bpmndi:BPMNShape id="EndEvent_CartCreationFailed_di" bpmnElement="EndEvent_CartCreationFailed">
+        <dc:Bounds x="302" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="278" y="405" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Event: Cart Validation Exception -->
+      <bpmndi:BPMNShape id="EndEvent_CartValidationFailed_di" bpmnElement="EndEvent_CartValidationFailed">
+        <dc:Bounds x="462" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="438" y="405" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Event: Cart Submission Failed -->
+      <bpmndi:BPMNShape id="EndEvent_CartSubmissionFailed_di" bpmnElement="EndEvent_CartSubmissionFailed">
+        <dc:Bounds x="742" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="718" y="405" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error End Event: Service Location Update Failed -->
+      <bpmndi:BPMNShape id="EndEvent_ServiceLocationUpdateFailed_di" bpmnElement="EndEvent_ServiceLocationUpdateFailed">
+        <dc:Bounds x="902" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="878" y="405" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_Start_To_CreateCart_di" bpmnElement="Flow_Start_To_CreateCart">
+        <di:waypoint x="215" y="227" />
+        <di:waypoint x="270" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreateCart_To_Validate_di" bpmnElement="Flow_CreateCart_To_Validate">
+        <di:waypoint x="370" y="227" />
+        <di:waypoint x="430" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Validate_To_Gateway_di" bpmnElement="Flow_Validate_To_Gateway">
+        <di:waypoint x="530" y="227" />
+        <di:waypoint x="595" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway_To_Submit_di" bpmnElement="Flow_Gateway_To_Submit">
+        <di:waypoint x="645" y="227" />
+        <di:waypoint x="710" y="227" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="663" y="209" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway_To_ValidationError_di" bpmnElement="Flow_Gateway_To_ValidationError">
+        <di:waypoint x="620" y="252" />
+        <di:waypoint x="620" y="362" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="625" y="303" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Submit_To_UpdateLocation_di" bpmnElement="Flow_Submit_To_UpdateLocation">
+        <di:waypoint x="810" y="227" />
+        <di:waypoint x="870" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateLocation_To_End_di" bpmnElement="Flow_UpdateLocation_To_End">
+        <di:waypoint x="970" y="227" />
+        <di:waypoint x="1032" y="227" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreateCartError_To_End_di" bpmnElement="Flow_CreateCartError_To_End">
+        <di:waypoint x="320" y="285" />
+        <di:waypoint x="320" y="362" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidateError_To_End_di" bpmnElement="Flow_ValidateError_To_End">
+        <di:waypoint x="480" y="285" />
+        <di:waypoint x="480" y="362" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitError_To_End_di" bpmnElement="Flow_SubmitError_To_End">
+        <di:waypoint x="760" y="285" />
+        <di:waypoint x="760" y="362" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateLocationError_To_End_di" bpmnElement="Flow_UpdateLocationError_To_End">
+        <di:waypoint x="920" y="285" />
+        <di:waypoint x="920" y="362" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

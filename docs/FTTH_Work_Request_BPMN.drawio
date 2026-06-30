@@ -1,0 +1,155 @@
+<mxfile host="app.diagrams.net" modified="2024-06-12T00:00:00.000Z" agent="Kiro" version="22.1.2">
+  <diagram name="Work Request Lifecycle — Aaha Telecom" id="ftth-work-request">
+    <mxGraphModel dx="2000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- POOL -->
+        <mxCell id="pool" value="Work Request Lifecycle — POST /api/work-requests &amp; /transition" style="shape=pool;startSize=30;horizontal=1;childLayout=stackLayout;horizontalStack=0;resizeParent=1;collapsible=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="2300" height="1300" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: CSR -->
+        <mxCell id="lane_csr" value="CSR" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="30" width="2300" height="250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=general;outline=standard;fillColor=#67AB9F;strokeColor=#2D7600;" vertex="1" parent="lane_csr">
+          <mxGeometry x="60" y="105" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_create" value="Create Work Request&#xa;(pincode, oltType,&#xa;actionType, description)&#xa;Actions: ADD_OLT,&#xa;REMOVE_OLT,&#xa;ADD_SPLITTER,&#xa;REMOVE_SPLITTER" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="lane_csr">
+          <mxGeometry x="150" y="60" width="190" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- GW: Duplicate check -->
+        <mxCell id="gw_dup" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_csr">
+          <mxGeometry x="400" y="100" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_dup_l" value="Active WR&#xa;exists for same&#xa;pincode/oltType?" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_csr">
+          <mxGeometry x="370" y="55" width="110" height="42" as="geometry" />
+        </mxCell>
+
+        <mxCell id="err_dup" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="lane_csr">
+          <mxGeometry x="405" y="190" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="err_dup_l" value="Already exists" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_csr">
+          <mxGeometry x="385" y="225" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Status: NEW -->
+        <mxCell id="s_new" value="Status: NEW&#xa;(wrRepo.insert)&#xa;&#xa;Notify all MAINT users" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_csr">
+          <mxGeometry x="520" y="80" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- CSR closes from RESOLVED -->
+        <mxCell id="t_close" value="Close Work Request&#xa;(from RESOLVED)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="lane_csr">
+          <mxGeometry x="1950" y="85" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e0" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="t_create" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="t_create" target="gw_dup" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_err" value="YES" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="gw_dup" target="err_dup" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1_ok" value="NO" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw_dup" target="s_new" parent="lane_csr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: MAINT -->
+        <mxCell id="lane_maint" value="MAINTENANCE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="280" width="2300" height="350" as="geometry" />
+        </mxCell>
+
+        <!-- ACCEPTED -->
+        <mxCell id="s_accepted" value="ACCEPT Work Request&#xa;(assignedTo = actor)&#xa;&#xa;Clear notifications&#xa;for this WR" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_maint">
+          <mxGeometry x="800" y="50" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- GW: Release back? -->
+        <mxCell id="gw_release" value="X" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" vertex="1" parent="lane_maint">
+          <mxGeometry x="1050" y="75" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gw_release_l" value="Release back&#xa;to queue?" style="text;html=1;align=center;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="lane_maint">
+          <mxGeometry x="1028" y="42" width="95" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Release back to NEW -->
+        <mxCell id="t_release" value="Release → NEW&#xa;assignedTo = null&#xa;Re-notify all MAINT" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="lane_maint">
+          <mxGeometry x="1020" y="220" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- IN_PROGRESS -->
+        <mxCell id="s_progress" value="IN_PROGRESS&#xa;(Start working)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="lane_maint">
+          <mxGeometry x="1200" y="60" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- RESOLVED -->
+        <mxCell id="s_resolved" value="RESOLVED&#xa;(Work completed)" style="shape=mxgraph.bpmn.task;taskMarker=user;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_maint">
+          <mxGeometry x="1440" y="60" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Edges in MAINT lane -->
+        <mxCell id="e_acc_gw" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_accepted" target="gw_release" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gw_release" value="YES" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;fontSize=10;" edge="1" source="gw_release" target="t_release" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gw_progress" value="NO" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontSize=10;" edge="1" source="gw_release" target="s_progress" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_prog_res" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_progress" target="s_resolved" parent="lane_maint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: SYSTEM -->
+        <mxCell id="lane_sys" value="SYSTEM (Notifications)" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="630" width="2300" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- CLOSED status -->
+        <mxCell id="s_closed" value="Status: CLOSED&#xa;&#xa;Notify CSR (raisedBy):&#xa;&quot;Work request #X&#xa;has been CLOSED.&quot;" style="shape=mxgraph.bpmn.task;taskMarker=service;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="1930" y="50" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- End -->
+        <mxCell id="end_ok" value="" style="shape=mxgraph.bpmn.shape;perimeter=mxPerimeter.ellipsePerimeter;symbol=terminate;outline=end;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="lane_sys">
+          <mxGeometry x="2180" y="80" width="40" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_closed_end" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="s_closed" target="end_ok" parent="lane_sys">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- State Machine Note -->
+        <mxCell id="note_sm" value="State Machine (validateTransition):&#xa;&#xa;NEW → ACCEPTED | CLOSED&#xa;ACCEPTED → IN_PROGRESS | NEW (release)&#xa;IN_PROGRESS → RESOLVED&#xa;RESOLVED → CLOSED&#xa;CLOSED → (no transitions)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#ffffcc;strokeColor=#999966;fontSize=10;align=left;spacingLeft=10;" vertex="1" parent="lane_sys">
+          <mxGeometry x="60" y="50" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- LANE: DATABASE -->
+        <mxCell id="lane_db" value="DATABASE" style="swimlane;startSize=30;horizontal=0;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="pool">
+          <mxGeometry x="0" y="880" width="2300" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db1" value="work_requests" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="560" y="55" width="100" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db2" value="notifications" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontStyle=1;" vertex="1" parent="lane_db">
+          <mxGeometry x="840" y="55" width="100" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- LEGEND -->
+        <mxCell id="leg" value="Action Types: ADD_OLT, REMOVE_OLT, ADD_SPLITTER, REMOVE_SPLITTER     |     Statuses: NEW → ACCEPTED → IN_PROGRESS → RESOLVED → CLOSED" style="text;html=1;align=left;fontSize=10;fillColor=none;strokeColor=none;fontStyle=2;" vertex="1" parent="pool">
+          <mxGeometry x="50" y="1070" width="800" height="25" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

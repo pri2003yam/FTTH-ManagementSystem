@@ -62,7 +62,7 @@ export default function Connections() {
   const [niPincodeSuggestions, setNiPincodeSuggestions] = useState<string[]>([]);
   const [niPincodeDropdownOpen, setNiPincodeDropdownOpen] = useState(false);
   const [niPlanSearch, setNiPlanSearch] = useState("");
-  const [niForm, setNiForm] = useState({ customerName: "", email: "", salary: "", pincode: "" });
+  const [niForm, setNiForm] = useState({ customerName: "", email: "", panNumber: "", dob: "", pincode: "" });
   const [niLoading, setNiLoading] = useState(false);
   const [niDataLoading, setNiDataLoading] = useState(false);
   const [niDataError, setNiDataError] = useState("");
@@ -82,7 +82,7 @@ export default function Connections() {
   const [selectedNewPlanId, setSelectedNewPlanId] = useState<number | null>(null);
   const [cpLoading, setCpLoading] = useState(false);
   const [cpError, setCpError] = useState("");
-  const [cpSuccess, setCpSuccess] = useState("");
+  const [_cpSuccess, setCpSuccess] = useState("");
   const [cpSuccessData, setCpSuccessData] = useState<any>(null);
 
   // â”€â”€ Move state â”€â”€
@@ -95,7 +95,7 @@ export default function Connections() {
   const [moveCheckLoading, setMoveCheckLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
   const [moveError, setMoveError] = useState("");
-  const [moveSuccess, setMoveSuccess] = useState("");
+  const [_moveSuccess, setMoveSuccess] = useState("");
   const [moveSuccessData, setMoveSuccessData] = useState<any>(null);
   // â”€â”€ Disconnect state â”€â”€
   const [dcConns, setDcConns] = useState<ActiveConnection[]>([]);
@@ -188,7 +188,7 @@ export default function Connections() {
   }, [selectedConn]);
 
   const resetNi = () => {
-    setNiForm({ customerName: "", email: "", salary: "", pincode: "" });
+    setNiForm({ customerName: "", email: "", panNumber: "", dob: "", pincode: "" });
     setSelectedPlanId(null);
     setNiPincodeInput("");
     setNiPincodeSuggestions([]);
@@ -222,13 +222,16 @@ export default function Connections() {
     setNiError("");
     const plan = plans.find((p) => p.planId === selectedPlanId);
     if (!plan) { setNiError("Please select a plan from the table."); return; }
+    if (!niForm.panNumber || niForm.panNumber.length !== 10) { setNiError("Please enter a valid 10-character PAN number."); return; }
+    if (!niForm.dob) { setNiError("Please enter Date of Birth."); return; }
     setNiLoading(true);
     try {
       const res = await api.post<any>(ENDPOINTS.CONNECTION_NEW_INSTALL, {
         customerName: niForm.customerName,
         email: niForm.email,
-        salary: Number(niForm.salary),
-        pincode: Number(niForm.pincode),
+        panNumber: niForm.panNumber.toUpperCase(),
+        dob: niForm.dob,
+        pincode: niForm.pincode,
         planId: plan.planId,
         oltType: plan.oltType,
       });
@@ -248,7 +251,7 @@ export default function Connections() {
     setCpSuccess("");
     setCpLoading(true);
     try {
-      await api.post(ENDPOINTS.CONNECTION_CHANGE_PLAN(selectedConn.connectionId), { planId: selectedNewPlanId });
+      await api.post(ENDPOINTS.CONNECTION_CHANGE_PLAN(selectedConn.connectionId), { connectionId: selectedConn.connectionId, planId: selectedNewPlanId });
       const newPlan = availPlans.find(p => p.planId === selectedNewPlanId);
       setCpSuccessData({
         customerCode: selectedConn.customerCode,
@@ -294,7 +297,7 @@ export default function Connections() {
     setMoveError("");
     setMoveSuccess("");
     try {
-      await api.post(ENDPOINTS.CONNECTION_MOVE(moveConn.connectionId), { newPincode: Number(movePincode.trim()) });
+      await api.post(ENDPOINTS.CONNECTION_MOVE(moveConn.connectionId), { connectionId: moveConn.connectionId, newPincode: Number(movePincode.trim()) });
       setMoveSuccessData({
         customerCode: moveConn.customerCode,
         fullName: moveConn.fullName,
@@ -317,14 +320,7 @@ export default function Connections() {
 
   const selectedNewPlan = availPlans.find((p) => p.planId === selectedNewPlanId) ?? null;
 
-  const filterConns = (list: ActiveConnection[], query: string) => {
-    const q = query.toLowerCase();
-    return list.filter((c) =>
-      q === "" ||
-      c.fullName.toLowerCase().includes(q) ||
-      c.customerCode.toLowerCase().includes(q)
-    );
-  };
+
 
   const handleReactivate = async (conn: ActiveConnection) => {
     setDcReactivating(true);
@@ -352,7 +348,7 @@ export default function Connections() {
     setDcError("");
     setDcSuccess("");
     try {
-      await api.post(ENDPOINTS.CONNECTION_DISCONNECT(dcSelected.connectionId), {});
+      await api.post(ENDPOINTS.CONNECTION_DISCONNECT(dcSelected.connectionId), { connectionId: dcSelected.connectionId });
       setDcSuccess(`Connection #${dcSelected.connectionId} (${dcSelected.fullName}) disconnected successfully.`);
       setDcSelected(null);
       setDcConfirming(false);
@@ -442,9 +438,13 @@ export default function Connections() {
                     <input type="email" value={niForm.email} onChange={(e) => setNiForm({ ...niForm, email: e.target.value })}
                       required placeholder="Enter email address" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
                   </Field>
-                  <Field label="Monthly Salary (Rs.)">
-                    <input type="number" value={niForm.salary} onChange={(e) => setNiForm({ ...niForm, salary: e.target.value })}
-                      required placeholder="Minimum Rs. 30,000" style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+                  <Field label="PAN Number">
+                    <input value={niForm.panNumber} onChange={(e) => setNiForm({ ...niForm, panNumber: e.target.value.toUpperCase().slice(0, 10) })}
+                      required placeholder="e.g. ABCPK1234A" maxLength={10} style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+                  </Field>
+                  <Field label="Date of Birth">
+                    <input type="date" value={niForm.dob} onChange={(e) => setNiForm({ ...niForm, dob: e.target.value })}
+                      required style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
                   </Field>
                   <Field label="Pincode">
                     <div style={{ position: "relative" }}>

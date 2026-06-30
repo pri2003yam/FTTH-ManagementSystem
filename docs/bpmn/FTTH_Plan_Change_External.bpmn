@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_PC"
+                  targetNamespace="http://aaha-telecom.com/ftth">
+
+  <bpmn:process id="Process_PlanChange" name="Plan Change" isExecutable="true">
+
+    <bpmn:startEvent id="Start" name="Plan change request">
+      <bpmn:outgoing>F1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Validate new plan exists and is active -->
+    <bpmn:serviceTask id="Task_ValidateNewPlan" name="Validate New Plan"
+                      camunda:type="external" camunda:topic="pc_validatePlan">
+      <bpmn:incoming>F1</bpmn:incoming>
+      <bpmn:outgoing>F2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Plan" name="Plan Valid?">
+      <bpmn:incoming>F2</bpmn:incoming>
+      <bpmn:outgoing>F_Plan_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Plan_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Check connection is active -->
+    <bpmn:serviceTask id="Task_CheckConn" name="Check Connection Active"
+                      camunda:type="external" camunda:topic="pc_checkConnection">
+      <bpmn:incoming>F_Plan_Yes</bpmn:incoming>
+      <bpmn:outgoing>F3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="GW_Conn" name="Connection Active?">
+      <bpmn:incoming>F3</bpmn:incoming>
+      <bpmn:outgoing>F_Conn_Yes</bpmn:outgoing>
+      <bpmn:outgoing>F_Conn_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Execute plan change -->
+    <bpmn:serviceTask id="Task_ChangePlan" name="Change Plan (Reallocate + Bill + Email)"
+                      camunda:type="external" camunda:topic="pc_changePlan">
+      <bpmn:incoming>F_Conn_Yes</bpmn:incoming>
+      <bpmn:outgoing>F4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_Success" name="Plan Changed">
+      <bpmn:incoming>F4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err_Plan" name="Invalid Plan">
+      <bpmn:incoming>F_Plan_No</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Err_Conn" name="Connection Not Active">
+      <bpmn:incoming>F_Conn_No</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="F1" sourceRef="Start" targetRef="Task_ValidateNewPlan" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_ValidateNewPlan" targetRef="GW_Plan" />
+    <bpmn:sequenceFlow id="F_Plan_Yes" name="YES" sourceRef="GW_Plan" targetRef="Task_CheckConn">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Plan_No" name="NO" sourceRef="GW_Plan" targetRef="End_Err_Plan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${planValid == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_CheckConn" targetRef="GW_Conn" />
+    <bpmn:sequenceFlow id="F_Conn_Yes" name="YES" sourceRef="GW_Conn" targetRef="Task_ChangePlan">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_Conn_No" name="NO" sourceRef="GW_Conn" targetRef="End_Err_Conn">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${connectionActive == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F4" sourceRef="Task_ChangePlan" targetRef="End_Success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_PC">
+    <bpmndi:BPMNPlane id="BPMNPlane_PC" bpmnElement="Process_PlanChange">
+      <bpmndi:BPMNShape id="Start_di" bpmnElement="Start"><dc:Bounds x="180" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateNewPlan_di" bpmnElement="Task_ValidateNewPlan"><dc:Bounds x="270" y="140" width="150" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Plan_di" bpmnElement="GW_Plan" isMarkerVisible="true"><dc:Bounds x="475" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckConn_di" bpmnElement="Task_CheckConn"><dc:Bounds x="580" y="140" width="160" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GW_Conn_di" bpmnElement="GW_Conn" isMarkerVisible="true"><dc:Bounds x="795" y="155" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ChangePlan_di" bpmnElement="Task_ChangePlan"><dc:Bounds x="900" y="140" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Success_di" bpmnElement="End_Success"><dc:Bounds x="1142" y="162" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_Plan_di" bpmnElement="End_Err_Plan"><dc:Bounds x="482" y="322" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_Conn_di" bpmnElement="End_Err_Conn"><dc:Bounds x="802" y="322" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1"><di:waypoint x="216" y="180" /><di:waypoint x="270" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2"><di:waypoint x="420" y="180" /><di:waypoint x="475" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Plan_Yes_di" bpmnElement="F_Plan_Yes"><di:waypoint x="525" y="180" /><di:waypoint x="580" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Plan_No_di" bpmnElement="F_Plan_No"><di:waypoint x="500" y="205" /><di:waypoint x="500" y="322" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3"><di:waypoint x="740" y="180" /><di:waypoint x="795" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Conn_Yes_di" bpmnElement="F_Conn_Yes"><di:waypoint x="845" y="180" /><di:waypoint x="900" y="180" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Conn_No_di" bpmnElement="F_Conn_No"><di:waypoint x="820" y="205" /><di:waypoint x="820" y="322" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4"><di:waypoint x="1080" y="180" /><di:waypoint x="1142" y="180" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
