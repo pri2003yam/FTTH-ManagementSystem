@@ -30,6 +30,15 @@ public class EcmApiController {
         return ResponseEntity.ok(offering);
     }
 
+    // Full PO -> PS -> CFSS -> RFSS decomposition
+    // Used for: Voice+OTT breakdown, OLT auto-selection, BPMN service decomposition
+    @GetMapping("/offerings/{itemCode}/decompose")
+    public ResponseEntity<Map<String, Object>> decomposeOffering(@PathVariable String itemCode) {
+        Map<String, Object> result = ecmRepository.decomposeOffering(itemCode);
+        if (result.get("po") == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(result);
+    }
+
     // DEBUG: Show attribute view columns and raw data for first offering
     @GetMapping("/debug/attributes-schema")
     public Map<String, Object> debugAttributeSchema() {

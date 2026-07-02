@@ -35,6 +35,14 @@ public class EcmShoppingCartService implements ShoppingCartService {
     // In-memory cart store (for process lifetime)
     private final Map<String, Map<String, Object>> cartStore = new HashMap<>();
 
+    // Maps MySQL plan names to ECM item codes (your 4 POs)
+    private static final Map<String, String> PLAN_NAME_TO_ECM = Map.of(
+        "Basic",    "FTTH_BASIC_50",
+        "Standard", "FTTH_STD_100",
+        "Premium",  "FTTH_PREM_300",
+        "Ultra",    "FTTH_ULTRA_500"
+    );
+
     @Override
     public Map<String, Object> createShoppingCart(Map<String, Object> payload) {
         String cartId = "CART-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -112,11 +120,16 @@ public class EcmShoppingCartService implements ShoppingCartService {
 
         Map<String, Object> cartPayload = cartStore.get(cartId);
         String planId = cartPayload != null ? extractCharacteristic(cartPayload, "planId") : null;
+        String planName = cartPayload != null ? extractCharacteristic(cartPayload, "planName") : null;
+
+        // Resolve ECM item code from plan name (e.g. "Ultra" -> "FTTH_ULTRA_500")
+        String ecmItemCode = planName != null ? PLAN_NAME_TO_ECM.get(planName) : null;
+        String lookupCode = ecmItemCode != null ? ecmItemCode : planId;
 
         // Try to get price from ECM via backend
-        if (planId != null) {
+        if (lookupCode != null) {
             try {
-                String url = backendBaseUrl + "/api/ecm/offerings/" + planId;
+                String url = backendBaseUrl + "/api/ecm/offerings/" + lookupCode;
                 ResponseEntity<Map> resp = restTemplate.getForEntity(url, Map.class);
 
                 if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {

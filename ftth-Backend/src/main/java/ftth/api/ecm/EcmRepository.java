@@ -121,6 +121,111 @@ public class EcmRepository {
         return charges;
     }
 
+    // Find PS linked to a PO via product specification relation
+    public String findPsForPo(String poItemCode) {
+        String sql = "SELECT r.relateditemcode FROM ecm.cwpc_itemrelation r " +
+                     "JOIN ecm.cwpc_item i ON i.itemcode = r.relateditemcode " +
+                     "WHERE r.itemcode = ? AND i.itemtype = 'ProductSpecification' AND r.projectcode = ?";
+        try (Connection conn = ecmDb.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, poItemCode);
+            ps.setString(2, projectCode);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getString("relateditemcode");
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding PS for PO: " + poItemCode, e);
+        }
+        return null;
+    }
+
+    // Find all CFSS linked to a PS
+    public List<Map<String, Object>> findCfssForPs(String psItemCode) {
+        String sql = "SELECT i.itemcode, i.name, i.description, i.status " +
+                     "FROM ecm.cwpc_itemrelation r " +
+                     "JOIN ecm.cwpc_item i ON i.itemcode = r.relateditemcode " +
+                     "WHERE r.itemcode = ? AND i.itemtype = 'CustomerFacingServiceSpec' AND r.projectcode = ?";
+        List<Map<String, Object>> results = new ArrayList<>();
+        try (Connection conn = ecmDb.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, psItemCode);
+            ps.setString(2, projectCode);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("itemCode", rs.getString("itemcode"));
+                row.put("name", rs.getString("name"));
+                row.put("description", rs.getString("description"));
+                row.put("status", rs.getString("status"));
+                row.put("attributes", findAttributes(rs.getString("itemcode")));
+                results.add(row);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding CFSS for PS: " + psItemCode, e);
+        }
+        return results;
+    }
+
+    // Find RFSS linked to a CFSS
+    public Map<String, Object> findRfssForCfss(String cfssItemCode) {
+        String sql = "SELECT i.itemcode, i.name, i.description, i.status " +
+                     "FROM ecm.cwpc_itemrelation r " +
+                     "JOIN ecm.cwpc_item i ON i.itemcode = r.relateditemcode " +
+                     "WHERE r.itemcode = ? AND i.itemtype = 'ResourceFacingServiceSpec' AND r.projectcode = ?";
+        try (Connection conn = ecmDb.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, cfssItemCode);
+            ps.setString(2, projectCode);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("itemCode", rs.getString("itemcode"));
+                row.put("name", rs.getString("name"));
+                row.put("description", rs.getString("description"));
+                row.put("status", rs.getString("status"));
+                row.put("attributes", findAttributes(rs.getString("itemcode")));
+                return row;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error finding RFSS for CFSS: " + cfssItemCode, e);
+        }
+        return null;
+    }
+
+    // Full decomposition: PO -> PS -> CFSS (with RFSS per CFSS)
+    public Map<String, Object> decomposeOffering(String poItemCode) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("po", findProductOffering(poItemCode));
+
+        String psCode = findPsForPo(poItemCode);
+        if (psCode != null) {
+            Map<String, Object> ps = new HashMap<>();
+            ps.put("itemCode", psCode);
+            ps.put("cfss", new ArrayList<>());
+
+            List<Map<String, Object>> cfssList = findCfssForPs(psCode);
+            for (Map<String, Object> cfss : cfssList) {
+                Map<String, Object> rfss = findRfssForCfss((String) cfss.get("itemCode"));
+                cfss.put("rfss", rfss);
+                // Extract oltType from RFSS attributes for OLT auto-selection
+                if (rfss != null) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, String>> attrs = (List<Map<String, String>>) rfss.get("attributes");
+                    if (attrs != null) {
+                        attrs.stream()
+                            .filter(a -> "oltType".equals(a.get("name")) || "oltType".equals(a.get("code")))
+                            .findFirst()
+                            .ifPresent(a -> result.put("oltType", a.get("value")));
+                    }
+                }
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> cfssBucket = (List<Map<String, Object>>) ps.get("cfss");
+                cfssBucket.add(cfss);
+            }
+            result.put("ps", ps);
+        }
+        return result;
+    }
+
     public Map<String, Object> debugAttributeColumns() {
         Map<String, Object> result = new HashMap<>();
         String sql = "SELECT * FROM ecm.cwpc_itemattribute_v WHERE projectcode = ? FETCH FIRST 5 ROWS ONLY";
