@@ -121,17 +121,38 @@ export default function Catalog() {
   );
 }
 
+interface DecomposedOffering {
+  po: EcmOffering;
+  ps?: { itemCode: string; cfss: { itemCode: string; name: string; attributes: { code: string; name: string; value: string }[]; rfss?: { itemCode: string; name: string; attributes: { code: string; name: string; value: string }[] } }[] };
+  oltType?: string;
+}
+
 /* Detail Modal */
 function DetailModal({ offering, onClose }: { offering: EcmOffering; onClose: () => void }) {
+  const [decomposed, setDecomposed] = useState<DecomposedOffering | null>(null);
+  const [loadingDecompose, setLoadingDecompose] = useState(true);
+
+  useEffect(() => {
+    api.get<DecomposedOffering>(`/api/ecm/offerings/${offering.itemCode}/decompose`)
+      .then(setDecomposed)
+      .catch(() => setDecomposed(null))
+      .finally(() => setLoadingDecompose(false));
+  }, [offering.itemCode]);
+
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 520, overflow: "hidden", maxHeight: "80vh", overflowY: "auto" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 560, overflow: "hidden", maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ background: "#1e293b", padding: "20px 24px", color: "#fff" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
               <p style={{ fontSize: 11, color: "#94a3b8", margin: 0 }}>ECM PRODUCT OFFERING</p>
               <h2 style={{ fontSize: 20, fontWeight: 700, margin: "4px 0 0" }}>{offering.name}</h2>
               <code style={{ fontSize: 12, color: "#a5b4fc" }}>{offering.itemCode}</code>
+              {decomposed?.oltType && (
+                <span style={{ marginLeft: 10, fontSize: 11, background: "#0ea5e9", color: "#fff", padding: "2px 8px", borderRadius: 8 }}>
+                  {decomposed.oltType}
+                </span>
+              )}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer" }}>✕</button>
           </div>
@@ -144,12 +165,6 @@ function DetailModal({ offering, onClose }: { offering: EcmOffering; onClose: ()
             <InfoRow label="Last Updated" value={offering.lastUpdated ? new Date(offering.lastUpdated).toLocaleString() : "—"} />
           </Section>
 
-          {offering.attributes.length > 0 && (
-            <Section title={`Characteristics (${offering.attributes.length})`}>
-              {offering.attributes.map((a, i) => <InfoRow key={i} label={a.name || a.code} value={a.value || "—"} />)}
-            </Section>
-          )}
-
           {offering.charges.length > 0 && (
             <Section title={`Charges (${offering.charges.length})`}>
               {offering.charges.map((c, i) => (
@@ -158,9 +173,50 @@ function DetailModal({ offering, onClose }: { offering: EcmOffering; onClose: ()
             </Section>
           )}
 
-          {offering.attributes.length === 0 && offering.charges.length === 0 && (
+          {offering.attributes.length > 0 && (
+            <Section title={`PO Attributes (${offering.attributes.length})`}>
+              {offering.attributes.map((a, i) => <InfoRow key={i} label={a.name || a.code} value={a.value || "—"} />)}
+            </Section>
+          )}
+
+          {/* PO -> PS -> CFSS -> RFSS Hierarchy */}
+          {loadingDecompose ? (
+            <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center" }}>Loading service hierarchy...</p>
+          ) : decomposed?.ps ? (
+            <Section title="Service Hierarchy (PO → PS → CFSS → RFSS)">
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                PS: <code style={{ color: "#6366f1" }}>{decomposed.ps.itemCode}</code>
+              </div>
+              {decomposed.ps.cfss.map((cfss, i) => (
+                <div key={i} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, marginBottom: 8, background: "#f8fafc" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b" }}>📡 {cfss.name}</span>
+                    <code style={{ fontSize: 11, color: "#6366f1" }}>{cfss.itemCode}</code>
+                  </div>
+                  {cfss.attributes.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                      {cfss.attributes.map((a, j) => (
+                        <span key={j} style={{ fontSize: 11, background: "#e0f2fe", color: "#0369a1", padding: "2px 6px", borderRadius: 4 }}>
+                          {a.name || a.code}: {a.value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {cfss.rfss && (
+                    <div style={{ background: "#fef3c7", borderRadius: 6, padding: "6px 10px", fontSize: 11 }}>
+                      <span style={{ color: "#92400e", fontWeight: 600 }}>🔧 RFSS: {cfss.rfss.name}</span>
+                      <code style={{ color: "#b45309", marginLeft: 8 }}>{cfss.rfss.itemCode}</code>
+                      {cfss.rfss.attributes.map((a, j) => (
+                        <span key={j} style={{ marginLeft: 8, color: "#78350f" }}>{a.name || a.code}: {a.value}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </Section>
+          ) : (
             <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", padding: 16 }}>
-              No attributes or charges configured yet. Add them in Velocity Studio.
+              No PS linked yet. Link this PO to a PS in Velocity Studio (General Info → Product Specification).
             </p>
           )}
         </div>

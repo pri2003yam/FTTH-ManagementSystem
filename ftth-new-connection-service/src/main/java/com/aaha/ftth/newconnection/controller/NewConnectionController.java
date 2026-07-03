@@ -32,6 +32,7 @@ public class NewConnectionController {
             String pincode = String.valueOf(request.get("pincode"));
             long planId = ((Number) request.get("planId")).longValue();
             String oltType = (String) request.get("oltType");
+            String planName = request.get("planName") != null ? (String) request.get("planName") : "";
 
             // Build process variables
             Map<String, Object> variables = new HashMap<>();
@@ -42,6 +43,7 @@ public class NewConnectionController {
             variables.put("pincode", createVariable(pincode, "String"));
             variables.put("planId", createVariable(planId, "Long"));
             variables.put("oltType", createVariable(oltType, "String"));
+            variables.put("planName", createVariable(planName, "String"));
 
             // Start process instance
             Map<String, Object> startBody = new HashMap<>();

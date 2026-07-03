@@ -233,6 +233,7 @@ export default function Connections() {
         dob: niForm.dob,
         pincode: niForm.pincode,
         planId: plan.planId,
+        planName: plan.planName,
         oltType: plan.oltType,
       });
       setNiCreatedConn(res);

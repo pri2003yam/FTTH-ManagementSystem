@@ -41,9 +41,10 @@ public class CreateNewConnectionCartDelegate extends AbstractEocDelegate {
         String pincode = String.valueOf(getRequiredVariable(execution, "pincode", Object.class));
         String oltType = getRequiredString(execution, "oltType");
         String customerCode = getRequiredString(execution, "customerCode");
+        String planName = getRequiredString(execution, "planName");
 
         // Build TMF773 Shopping Cart payload
-        Map<String, Object> payload = buildCartPayload(customerName, email, planId, pincode, oltType, customerCode);
+        Map<String, Object> payload = buildCartPayload(customerName, email, planId, pincode, oltType, customerCode, planName);
 
         try {
             // Invoke the shopping cart adapter
@@ -60,10 +61,11 @@ public class CreateNewConnectionCartDelegate extends AbstractEocDelegate {
 
     private Map<String, Object> buildCartPayload(String customerName, String email,
                                                   String planId, String pincode,
-                                                  String oltType, String customerCode) {
+                                                  String oltType, String customerCode, String planName) {
         // Product characteristics
         List<Map<String, Object>> characteristics = new ArrayList<>();
         characteristics.add(createCharacteristic("planId", planId));
+        characteristics.add(createCharacteristic("planName", planName));
         characteristics.add(createCharacteristic("oltType", oltType));
         characteristics.add(createCharacteristic("pincode", pincode));
         characteristics.add(createCharacteristic("customerName", customerName));
